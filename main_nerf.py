@@ -60,11 +60,11 @@ if __name__ == '__main__':
 
     if opt.debug:
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        train_loader = NeRFDataset(opt, device=device, type='train', ).dataloader()
-        nr = 0
-        for data in train_loader:
-            nr += 1
-            print(nr)
+        train_loader = NeRFDataset(opt, device=device, type='train').dataloader()
+        batch = next(iter(train_loader))
+        print(batch)
+        print(batch["rays_o"].size())
+        
 
     if opt.O:
         opt.fp16 = True

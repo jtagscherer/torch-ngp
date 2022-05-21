@@ -62,12 +62,11 @@ def get_rays(poses, intrinsics, H, W, N=-1, error_map=None, random_patches=False
 
     if N > 0:
         N = min(N, H*W)
-
-        if error_map is None:
-            inds = torch.randint(0, H*W, size=[N], device=device) # may duplicate
-            inds = inds.expand([B, N])
-        else:
-            if not random_patches:
+        if not random_patches:
+            if error_map is None:
+                inds = torch.randint(0, H*W, size=[N], device=device) # may duplicate
+                inds = inds.expand([B, N])
+            else:
                 # weighted sample on a low-reso grid
                 inds_coarse = torch.multinomial(error_map.to(device), N, replacement=False) # [B, N], but in [0, 128*128)
 
@@ -79,18 +78,17 @@ def get_rays(poses, intrinsics, H, W, N=-1, error_map=None, random_patches=False
                 inds = inds_x * W + inds_y
 
                 results['inds_coarse'] = inds_coarse # need this when updating error_map
-            else:
-                # Patch-wise training - Random choose one fixed pixel per region (region is random size and random position)
-                total_inds = np.arange(H*W).reshape(H, W)
-                patch_H, patch_W = 67, 81
-                num_region_H, num_region_W = H//patch_H, W//patch_W #16, 24(Family, Francis, Horse), #8, 12(Truck, PG)
-                
-                region_size_v = np.random.randint(num_region_H//2, num_region_H+1)
-                region_size_u = np.random.randint(num_region_W//3, num_region_W+1)
-                region_position_v = np.random.randint(H - patch_H * region_size_v + region_size_v)
-                region_position_u = np.random.randint(W - patch_W * region_size_u + region_size_u)
-                inds = total_inds[region_position_v::region_size_v][:patch_H][:, region_position_u::region_size_u][:, :patch_W].reshape(-1)
-                print(inds)
+        else:
+            # Patch-wise training - Random choose one fixed pixel per region (region is random size and random position)
+            total_inds = np.arange(H*W).reshape(H, W)
+            patch_H, patch_W = 67, 81
+            num_region_H, num_region_W = H//patch_H, W//patch_W #16, 24(Family, Francis, Horse), #8, 12(Truck, PG)
+            
+            region_size_v = np.random.randint(num_region_H//2, num_region_H+1)
+            region_size_u = np.random.randint(num_region_W//3, num_region_W+1)
+            region_position_v = np.random.randint(H - patch_H * region_size_v + region_size_v)
+            region_position_u = np.random.randint(W - patch_W * region_size_u + region_size_u)
+            inds = total_inds[region_position_v::region_size_v][:patch_H][:, region_position_u::region_size_u][:, :patch_W].reshape(-1)
 
         i = torch.gather(i, -1, inds)
         j = torch.gather(j, -1, inds)
