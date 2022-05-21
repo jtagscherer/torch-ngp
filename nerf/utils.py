@@ -88,7 +88,9 @@ def get_rays(poses, intrinsics, H, W, N=-1, error_map=None, random_patches=False
             region_size_u = np.random.randint(num_region_W//3, num_region_W+1)
             region_position_v = np.random.randint(H - patch_H * region_size_v + region_size_v)
             region_position_u = np.random.randint(W - patch_W * region_size_u + region_size_u)
-            inds = total_inds[region_position_v::region_size_v][:patch_H][:, region_position_u::region_size_u][:, :patch_W].reshape(-1)
+            inds = torch.from_numpy(total_inds[region_position_v::region_size_v][:patch_H][:, region_position_u::region_size_u][:, :patch_W].reshape(-1))
+            inds = inds.expand([B, inds.size(0)])
+            inds = inds.to(device)
 
         i = torch.gather(i, -1, inds)
         j = torch.gather(j, -1, inds)

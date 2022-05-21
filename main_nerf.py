@@ -4,6 +4,7 @@ import argparse
 from nerf.provider import NeRFDataset
 from nerf.gui import NeRFGUI
 from nerf.utils import *
+from matplotlib import pyplot as plt
 
 #torch.autograd.set_detect_anomaly(True)
 
@@ -62,8 +63,15 @@ if __name__ == '__main__':
         device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         train_loader = NeRFDataset(opt, device=device, type='train').dataloader()
         batch = next(iter(train_loader))
-        print(batch)
-        print(batch["rays_o"].size())
+        img = batch["images"].reshape(67,81,3)
+        plt.imshow(img.to(torch.device("cpu")))
+        plt.show()
+        NeRFDataset.enablePatchSampling(True)
+        batch = next(iter(train_loader))
+        img = batch["images"].reshape(67,81,3)
+        plt.imshow(img.to(torch.device("cpu")))
+        plt.show()
+        exit()
         
 
     if opt.O:
