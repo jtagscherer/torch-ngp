@@ -364,6 +364,14 @@ class Trainer(object):
 
     def train_step(self, data):
 
+        if self.epoch > 100 and self.epoch < 200:
+            # TODO: Freeze NeRF if not frozen yet
+            # TODO: Return content loss
+            pass
+        elif self.epoch >= 200:
+            # TODO: Return style and content loss
+            pass
+
         rays_o = data['rays_o'] # [B, N, 3]
         rays_d = data['rays_d'] # [B, N, 3]
 
@@ -508,7 +516,7 @@ class Trainer(object):
 
         # get a ref to error_map
         self.error_map = train_loader._data.error_map
-        
+
         for epoch in range(self.epoch, max_epochs + 1):
             self.epoch = epoch
 
@@ -520,6 +528,10 @@ class Trainer(object):
             if self.epoch % self.eval_interval == 0:
                 self.evaluate_one_epoch(valid_loader)
                 self.save_checkpoint(full=False, best=True)
+
+        # Train style transfer
+        for style_epoch in range(0, max_epochs + 1):
+            # TODO
 
         if self.use_tensorboardX and self.local_rank == 0:
             self.writer.close()

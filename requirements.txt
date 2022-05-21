@@ -14,3 +14,4 @@ pysdf
 dearpygui
 packaging
 scipy
+setuptools~=62.3.2
