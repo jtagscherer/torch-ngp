@@ -38,7 +38,7 @@ def custom_meshgrid(*args):
 
 
 @torch.cuda.amp.autocast(enabled=False)
-def get_rays(poses, intrinsics, H, W, N=-1, error_map=None):
+def get_rays(poses, intrinsics, H, W, N=-1, error_map=None, random_patches=False):
     ''' get rays
     Args:
         poses: [B, 4, 4], cam2world
@@ -62,23 +62,35 @@ def get_rays(poses, intrinsics, H, W, N=-1, error_map=None):
 
     if N > 0:
         N = min(N, H*W)
+        if not random_patches:
+            if error_map is None:
+                inds = torch.randint(0, H*W, size=[N], device=device) # may duplicate
+                inds = inds.expand([B, N])
+            else:
+                # weighted sample on a low-reso grid
+                inds_coarse = torch.multinomial(error_map.to(device), N, replacement=False) # [B, N], but in [0, 128*128)
 
-        if error_map is None:
-            inds = torch.randint(0, H*W, size=[N], device=device) # may duplicate
-            inds = inds.expand([B, N])
+                # map to the original resolution with random perturb.
+                inds_x, inds_y = inds_coarse // 128, inds_coarse % 128 # `//` will throw a warning in torch 1.10... anyway.
+                sx, sy = H / 128, W / 128
+                inds_x = (inds_x * sx + torch.rand(B, N, device=device) * sx).long().clamp(max=H - 1)
+                inds_y = (inds_y * sy + torch.rand(B, N, device=device) * sy).long().clamp(max=W - 1)
+                inds = inds_x * W + inds_y
+
+                results['inds_coarse'] = inds_coarse # need this when updating error_map
         else:
-
-            # weighted sample on a low-reso grid
-            inds_coarse = torch.multinomial(error_map.to(device), N, replacement=False) # [B, N], but in [0, 128*128)
-
-            # map to the original resolution with random perturb.
-            inds_x, inds_y = inds_coarse // 128, inds_coarse % 128 # `//` will throw a warning in torch 1.10... anyway.
-            sx, sy = H / 128, W / 128
-            inds_x = (inds_x * sx + torch.rand(B, N, device=device) * sx).long().clamp(max=H - 1)
-            inds_y = (inds_y * sy + torch.rand(B, N, device=device) * sy).long().clamp(max=W - 1)
-            inds = inds_x * W + inds_y
-
-            results['inds_coarse'] = inds_coarse # need this when updating error_map
+            # Patch-wise training - Random choose one fixed pixel per region (region is random size and random position)
+            total_inds = torch.arange(H*W).reshape(H, W)
+            patch_H, patch_W = 67, 81
+            num_region_H, num_region_W = H//patch_H, W//patch_W #16, 24(Family, Francis, Horse), #8, 12(Truck, PG)
+            
+            region_size_v = np.random.randint(num_region_H//2, num_region_H+1)
+            region_size_u = np.random.randint(num_region_W//3, num_region_W+1)
+            region_position_v = np.random.randint(H - patch_H * region_size_v + region_size_v)
+            region_position_u = np.random.randint(W - patch_W * region_size_u + region_size_u)
+            inds = total_inds[region_position_v::region_size_v][:patch_H][:, region_position_u::region_size_u][:, :patch_W].reshape(-1)
+            inds = inds.expand([B, inds.size(0)])
+            inds = inds.to(device)
 
         i = torch.gather(i, -1, inds)
         j = torch.gather(j, -1, inds)

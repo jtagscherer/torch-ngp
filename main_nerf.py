@@ -4,6 +4,7 @@ import argparse
 from nerf.provider import NeRFDataset
 from nerf.gui import NeRFGUI
 from nerf.utils import *
+from matplotlib import pyplot as plt
 
 #torch.autograd.set_detect_anomaly(True)
 
@@ -54,7 +55,24 @@ if __name__ == '__main__':
     parser.add_argument('--clip_text', type=str, default='', help="text input for CLIP guidance")
     parser.add_argument('--rand_pose', type=int, default=-1, help="<0 uses no rand pose, =0 only uses rand pose, >0 sample one rand pose every $ known poses")
 
+    parser.add_argument('--debug', action='store_true', help="Debug mode")
+
     opt = parser.parse_args()
+
+    if opt.debug:
+        device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        train_loader = NeRFDataset(opt, device=device, type='train').dataloader()
+        batch = next(iter(train_loader))
+        img = batch["images"].reshape(67,81,3)
+        plt.imshow(img.to(torch.device("cpu")))
+        plt.show()
+        NeRFDataset.enablePatchSampling(True)
+        batch = next(iter(train_loader))
+        img = batch["images"].reshape(67,81,3)
+        plt.imshow(img.to(torch.device("cpu")))
+        plt.show()
+        exit()
+        
 
     if opt.O:
         opt.fp16 = True
