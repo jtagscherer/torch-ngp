@@ -1,4 +1,5 @@
-def get_loss(with_style_loss = False):
+def get_loss(with_style_loss=False):
+    # TODO: Get content feature from ground truth image and stylized output
     content_feat = net.module.get_content_feat(ray_batch['rgb'].transpose(1, 0).reshape(3, 67, 81).unsqueeze(0))
     output_content_feat = net.module.get_content_feat(ret['rgb'].transpose(1, 0).reshape(3, 67, 81).unsqueeze(0))
     output_style_feats, output_style_feat_mean_std = net.module.get_style_feat(

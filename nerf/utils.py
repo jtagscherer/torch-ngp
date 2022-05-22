@@ -531,6 +531,7 @@ class Trainer(object):
 
         # Train style transfer
         for style_epoch in range(0, max_epochs + 1):
+            pass
             # TODO
 
         if self.use_tensorboardX and self.local_rank == 0:

@@ -1,7 +1,19 @@
 import torch.nn as nn
 import torch
+from torch.nn import init
 
-from model.function import calc_mean_std, weights_init_kaiming
+
+def weights_init_kaiming(m):
+    classname = m.__class__.__name__
+    # print(classname)
+    if classname.find('Conv') != -1:
+        init.kaiming_normal(m.weight.data, a=0, mode='fan_in')
+    elif classname.find('Linear') != -1:
+        init.kaiming_normal(m.weight.data, a=0, mode='fan_in')
+    elif classname.find('BatchNorm2d') != -1:
+        init.uniform(m.weight.data, 1.0, 0.02)
+        init.constant(m.bias.data, 0.0)
+
 
 vgg = nn.Sequential(
     nn.Conv2d(3, 3, (1, 1)),
@@ -60,12 +72,13 @@ vgg = nn.Sequential(
 )
 
 fc_encoder = nn.Sequential(
-        nn.Linear(1024, 1024),
-        nn.ReLU(inplace=True),
-        nn.Linear(1024, 1024),
-        nn.ReLU(inplace=True),
-        nn.Linear(1024, 1024)
+    nn.Linear(1024, 1024),
+    nn.ReLU(inplace=True),
+    nn.Linear(1024, 1024),
+    nn.ReLU(inplace=True),
+    nn.Linear(1024, 1024)
 )
+
 
 class Net(nn.Module):
     def __init__(self, encoder, fc_encoder):
@@ -76,12 +89,12 @@ class Net(nn.Module):
         self.enc_3 = nn.Sequential(*enc_layers[11:18])  # relu2_1 -> relu3_1
         self.enc_4 = nn.Sequential(*enc_layers[18:31])  # relu3_1 -> relu4_1
         self.fc_encoder = fc_encoder
-        
+
         # fix the encoder
         for name in ['enc_1', 'enc_2', 'enc_3', 'enc_4']:
             for param in getattr(self, name).parameters():
                 param.requires_grad = False
-                
+
         self.fc_encoder.apply(weights_init_kaiming)
 
     # extract relu1_1, relu2_1, relu3_1, relu4_1 from input image
@@ -92,13 +105,11 @@ class Net(nn.Module):
             results.append(func(results[-1]))
         return results[1:]
 
-    
     # extract relu4_1 from input image
     def get_content_feat(self, input):
         for i in range(4):
             input = getattr(self, 'enc_{:d}'.format(i + 1))(input)
         return input
-
 
     def get_style_feat(self, input):
         style_feats = self.encode_with_intermediate(input)
@@ -112,7 +123,6 @@ class Net(nn.Module):
             out_mean_std.append(style_feat_mean_std)
         return style_feats, torch.cat(out_mean_std, dim=-1)
 
-    
     def calc_feat_mean_std(self, input, eps=1e-5):
         # eps is a small value added to the variance to avoid divide-by-zero.
         size = input.size()
@@ -121,4 +131,4 @@ class Net(nn.Module):
         feat_var = input.view(N, C, -1).var(dim=2) + eps
         feat_std = feat_var.sqrt().view(N, C)
         feat_mean = input.view(N, C, -1).mean(dim=2).view(N, C)
-        return feat_mean, feat_std, torch.cat([feat_mean, feat_std], dim = 1)
+        return feat_mean, feat_std, torch.cat([feat_mean, feat_std], dim=1)
