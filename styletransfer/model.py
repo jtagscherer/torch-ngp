@@ -10,10 +10,8 @@ logger = logging.getLogger(__package__)
 
 
 class StyleNeRFpp(nn.Module):
-    def __init__(self, args):
+    def __init__(self):
         super().__init__()
-
-        self.stage = args.stage
 
         self.latent_codes = nn.Embedding(1, 64).cuda()
         nn.init.normal_(self.latent_codes.weight, mean=0, std=0.01)
@@ -22,9 +20,9 @@ class StyleNeRFpp(nn.Module):
         vgg = RAIN.vgg
         fc_encoder = RAIN.fc_encoder
 
-        # Load pretrained weights of vgg and fc_encoder
-        vgg.load_state_dict(torch.load(args.vgg_pretrained_path))
-        fc_encoder.load_state_dict(torch.load(args.fc_encoder_pretrained_path))
+        # Load data weights of vgg and fc_encoder
+        vgg.load_state_dict(torch.load('../inputdata/vgg_normalised.pth'))
+        fc_encoder.load_state_dict(torch.load('../inputdata/fc_encoder_iter_160000.pth'))
 
         vgg = nn.Sequential(*list(vgg.children())[:31])
         self.RAIN_net = RAIN_net(vgg, fc_encoder)
