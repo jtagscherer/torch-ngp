@@ -29,8 +29,7 @@ from torch_ema import ExponentialMovingAverage
 
 from packaging import version as pver
 
-from nerf.provider import NeRFDataset
-from styletransfer.RAIN import RainNet
+from styletransfer.RAIN import Net as RainNet
 from styletransfer.model import StyleNeRFpp
 from styletransfer.utils import load_style_image, get_content_loss, get_style_loss
 
@@ -407,9 +406,9 @@ class Trainer(object):
             bg_color = None
             gt_rgb = images
 
-        if self.epoch > 200:
+        if self.epoch > 5000:
             # Freeze NeRF if not frozen yet
-            if self.epoch == 201:
+            if self.epoch == 5001:
                 for param in self.model.sigma_net.parameters():
                     param.requires_grad = False
             NeRFDataset.patch_sampling = True
@@ -432,7 +431,7 @@ class Trainer(object):
                 content_loss = get_content_loss(content_feat, output_content_feat)
                 style_loss = get_style_loss(style_feat_mean_std, output_style_feat_mean_std)
 
-                if self.epoch <= 500:
+                if self.epoch <= 6500:
                     loss = content_loss
                 else:
                     loss = content_loss + style_loss

@@ -1,4 +1,4 @@
-from PIL.Image import Image
+import PIL.Image as Image
 from torchvision import transforms
 import torch.nn.functional as F
 
@@ -9,7 +9,7 @@ data_transform = transforms.Compose([
 
 
 def load_style_image():
-    ori_style_img = Image.open('../inputdata/style.jpg').convert('RGB')
+    ori_style_img = Image.open('/home/inctag/inputdata/style.jpg').convert('RGB')
     return data_transform(ori_style_img)
 
 

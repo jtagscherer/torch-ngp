@@ -21,8 +21,8 @@ class StyleNeRFpp(nn.Module):
         fc_encoder = RAIN.fc_encoder
 
         # Load data weights of vgg and fc_encoder
-        vgg.load_state_dict(torch.load('../inputdata/vgg_normalised.pth'))
-        fc_encoder.load_state_dict(torch.load('../inputdata/fc_encoder_iter_160000.pth'))
+        vgg.load_state_dict(torch.load('/home/inctag/inputdata/vgg_normalised.pth'))
+        fc_encoder.load_state_dict(torch.load('/home/inctag/inputdata/fc_encoder_iter_160000.pth'))
 
         vgg = nn.Sequential(*list(vgg.children())[:31])
         self.RAIN_net = RAIN_net(vgg, fc_encoder)
