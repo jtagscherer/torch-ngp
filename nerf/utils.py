@@ -164,7 +164,7 @@ def torch_vis_2d(x, renormalize=False):
         x = (x - x.min(axis=0, keepdims=True)) / (x.max(axis=0, keepdims=True) - x.min(axis=0, keepdims=True) + 1e-8)
 
     plt.imshow(x)
-    plt.show()
+    # plt.show()
 
 
 @torch.jit.script
