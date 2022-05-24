@@ -409,6 +409,14 @@ class Trainer(object):
         images = data['images']  # [B, N, 3/4]
         B, N, C = images.shape
 
+        if self.global_step % 100 == 0:
+            self.log(f"Step {self.global_step} rays:")
+            self.log("Origins:")
+            self.log(rays_o)
+            self.log("Directions:")
+            self.log(rays_d)
+            self.log("\n\n")
+
         # train in srgb color space
         if C == 4:
             # train with random background color if using alpha mixing
