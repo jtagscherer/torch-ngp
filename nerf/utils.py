@@ -6,6 +6,8 @@ import random
 import warnings
 import tensorboardX
 
+from matplotlib import pyplot as plt
+
 import numpy as np
 import pandas as pd
 
@@ -435,6 +437,16 @@ class Trainer(object):
                     loss = content_loss
                 else:
                     loss = content_loss + style_loss
+                
+                if self.epoch == 5001:
+                    plt.figure()
+                    plt.imshow(prediction.to(torch.device('cpu')))
+                    plt.imshow(ground_truth.to(torch.device('cpu')))
+                    print(content_feat)
+                    print(output_content_feat)
+                    print(content_loss)
+                    print(style_loss)
+                    print(loss)
 
                 return prediction, ground_truth, loss
 
