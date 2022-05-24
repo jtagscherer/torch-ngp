@@ -95,6 +95,9 @@ def get_rays(poses, intrinsics, H, W, N=-1, error_map=None, random_patches=False
                 inds = inds_x * W + inds_y
 
                 results['inds_coarse'] = inds_coarse  # need this when updating error_map
+
+                print('RANDOM INDICES:')
+                print(inds)
         else:
             # Patch-wise training - Random choose one fixed pixel per region (region is random size and random position)
             total_inds = torch.arange(H * W).long().reshape(H, W)
@@ -109,6 +112,8 @@ def get_rays(poses, intrinsics, H, W, N=-1, error_map=None, random_patches=False
                    :patch_W].long().reshape(-1)
             inds = inds.expand([B, inds.size(0)])
             inds = inds.to(device)
+            print('PATCH INDICES:')
+            print(inds)
 
         i = torch.gather(i, -1, inds)
         j = torch.gather(j, -1, inds)
@@ -154,8 +159,6 @@ def torch_vis_2d(x, renormalize=False):
         if len(x.shape) == 3:
             x = x.permute(1, 2, 0).squeeze()
         x = x.detach().cpu().numpy()
-
-    print(f'[torch_vis_2d] {x.shape}, {x.dtype}, {x.min()} ~ {x.max()}')
 
     x = x.astype(np.float32)
 
@@ -461,9 +464,6 @@ class Trainer(object):
                     plt.savefig(f'/tmp/nerfout/{self.global_step}_pred.png')
                     torch_vis_2d(gt_image)
                     plt.savefig(f'/tmp/nerfout/{self.global_step}_gt.png')
-                    print(content_loss)
-                    print(style_loss)
-                    print(loss)
 
                 return prediction, ground_truth, loss
 
