@@ -97,7 +97,7 @@ def get_rays(poses, intrinsics, H, W, N=-1, error_map=None, random_patches=False
                 results['inds_coarse'] = inds_coarse  # need this when updating error_map
         else:
             # Patch-wise training - Random choose one fixed pixel per region (region is random size and random position)
-            total_inds = torch.arange(H * W).reshape(H, W)
+            total_inds = torch.arange(H * W).long().reshape(H, W)
             patch_H, patch_W = 67, 81
             num_region_H, num_region_W = H // patch_H, W // patch_W  # 16, 24(Family, Francis, Horse), #8, 12(Truck, PG)
 
@@ -106,7 +106,7 @@ def get_rays(poses, intrinsics, H, W, N=-1, error_map=None, random_patches=False
             region_position_v = np.random.randint(H - patch_H * region_size_v + region_size_v)
             region_position_u = np.random.randint(W - patch_W * region_size_u + region_size_u)
             inds = total_inds[region_position_v::region_size_v][:patch_H][:, region_position_u::region_size_u][:,
-                   :patch_W].reshape(-1)
+                   :patch_W].long().reshape(-1)
             inds = inds.expand([B, inds.size(0)])
             inds = inds.to(device)
 
