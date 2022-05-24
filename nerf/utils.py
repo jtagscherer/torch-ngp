@@ -35,6 +35,15 @@ from styletransfer.RAIN import Net as RainNet
 from styletransfer.model import StyleNeRFpp
 from styletransfer.utils import load_style_image, get_content_loss, get_style_loss
 
+patch_sampling = False
+
+def enablePatchSampling(enable):
+    global patch_sampling
+    patch_sampling = enable
+
+def getPatchSampling():
+    return patch_sampling
+
 
 def custom_meshgrid(*args):
     # ref: https://pytorch.org/docs/stable/generated/torch.meshgrid.html?highlight=meshgrid#torch.meshgrid
@@ -407,13 +416,13 @@ class Trainer(object):
         else:
             bg_color = None
             gt_rgb = images
-
-        if self.epoch > 5000:
+        
+        if self.global_step > 5000:
             # Freeze NeRF if not frozen yet
-            if self.epoch == 5001:
+            if self.global_step == 5001:
                 for param in self.model.sigma_net.parameters():
                     param.requires_grad = False
-            NeRFDataset.patch_sampling = True
+            enablePatchSampling(True)
 
             if 'images' in data:
                 # Render patch and get corresponding ground truth image
@@ -433,12 +442,12 @@ class Trainer(object):
                 content_loss = get_content_loss(content_feat, output_content_feat)
                 style_loss = get_style_loss(style_feat_mean_std, output_style_feat_mean_std)
 
-                if self.epoch <= 6500:
+                if self.global_step <= 6500:
                     loss = content_loss
                 else:
                     loss = content_loss + style_loss
                 
-                if self.epoch == 5001:
+                if self.global_step == 5001:
                     plt.figure()
                     plt.imshow(prediction.to(torch.device('cpu')))
                     plt.imshow(ground_truth.to(torch.device('cpu')))
@@ -744,7 +753,7 @@ class Trainer(object):
 
     def train_one_epoch(self, loader):
         self.log(f"==> Start Training Epoch {self.epoch}, lr={self.optimizer.param_groups[0]['lr']:.6f} ...")
-
+        print(f"Start Training Epoch {self.epoch}")
         total_loss = 0
         if self.local_rank == 0 and self.report_metric_at_train:
             for metric in self.metrics:
