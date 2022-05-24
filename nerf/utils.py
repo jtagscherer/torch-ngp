@@ -452,14 +452,15 @@ class Trainer(object):
                 else:
                     loss = content_loss + style_loss
                 
-                if self.global_step == style_training_start_step + 1:
+                if self.global_step < style_training_start_step + 50:
                     gt_image = ground_truth.detach()
                     gt_image = gt_image.reshape(67, 81, 3).permute(2,0,1).contiguous()
                     pred_image = prediction.detach()
                     pred_image = pred_image.reshape(67, 81, 3).permute(2,0,1).contiguous()
                     torch_vis_2d(pred_image)
-                    plt.figure()
+                    plt.savefig(f'/tmp/nerfout/{self.global_step}_pred.png')
                     torch_vis_2d(gt_image)
+                    plt.savefig(f'/tmp/nerfout/{self.global_step}_gt.png')
                     print(content_loss)
                     print(style_loss)
                     print(loss)
