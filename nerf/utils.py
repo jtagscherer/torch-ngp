@@ -354,7 +354,7 @@ class Trainer(object):
             f'[INFO] Trainer: {self.name} | {self.time_stamp} | {self.device} | {"fp16" if self.fp16 else "fp32"} | {self.workspace}')
         self.log(f'[INFO] #parameters: {sum([p.numel() for p in model.parameters() if p.requires_grad])}')
 
-        self.style_model = StyleNeRFpp()
+        self.style_model = StyleNeRFpp().to(device)
         self.style_image = load_style_image()
 
         if self.workspace is not None:
@@ -416,27 +416,30 @@ class Trainer(object):
         else:
             bg_color = None
             gt_rgb = images
+
+        if self.global_step == 5000:
+            enablePatchSampling(True)
         
         if self.global_step > 5000:
             # Freeze NeRF if not frozen yet
             if self.global_step == 5001:
                 for param in self.model.sigma_net.parameters():
                     param.requires_grad = False
-            enablePatchSampling(True)
+                self.optimizer = optim.Adam(self.model.parameters(), lr=0.0001, weight_decay=5e-4)
 
             if 'images' in data:
                 # Render patch and get corresponding ground truth image
                 prediction = self.model.render(rays_o, rays_d, staged=False, bg_color=bg_color, perturb=True,
-                                               **vars(self.opt))
+                                               **vars(self.opt))['image']
                 ground_truth = gt_rgb  # TODO: Is this really the right crop?
 
                 content_feat = self.style_model.get_content_feat(
-                    ground_truth.transpose(1, 0).reshape(3, 67, 81).unsqueeze(0))
+                    ground_truth.reshape(67, 81, 3).permute(2,0,1).contiguous().unsqueeze(0))
                 output_content_feat = self.style_model.get_content_feat(
-                    prediction.transpose(1, 0).reshape(3, 67, 81).unsqueeze(0))
+                    prediction.reshape(67, 81, 3).permute(2,0,1).contiguous().unsqueeze(0))
 
                 output_style_feats, output_style_feat_mean_std = self.style_model.get_style_feat(
-                    prediction.transpose(1, 0).reshape(3, 67, 81).unsqueeze(0))
+                    prediction.reshape(67, 81, 3).permute(2,0,1).contiguous().unsqueeze(0))
                 style_feats, style_feat_mean_std = self.style_model.get_style_feat(self.style_image.cuda().unsqueeze(0))
 
                 content_loss = get_content_loss(content_feat, output_content_feat)
@@ -448,11 +451,13 @@ class Trainer(object):
                     loss = content_loss + style_loss
                 
                 if self.global_step == 5001:
+                    gt_image = ground_truth.detach()
+                    gt_image = gt_image.reshape(67, 81, 3).permute(2,0,1).contiguous()
+                    pred_image = prediction.detach()
+                    pred_image = pred_image.reshape(67, 81, 3).permute(2,0,1).contiguous()
+                    torch_vis_2d(pred_image)
                     plt.figure()
-                    plt.imshow(prediction.to(torch.device('cpu')))
-                    plt.imshow(ground_truth.to(torch.device('cpu')))
-                    print(content_feat)
-                    print(output_content_feat)
+                    torch_vis_2d(gt_image)
                     print(content_loss)
                     print(style_loss)
                     print(loss)
