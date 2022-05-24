@@ -417,12 +417,14 @@ class Trainer(object):
             bg_color = None
             gt_rgb = images
 
-        if self.global_step == 5000:
+        style_training_start_step = 3000
+
+        if self.global_step == style_training_start_step:
             enablePatchSampling(True)
         
-        if self.global_step > 5000:
+        if self.global_step > style_training_start_step:
             # Freeze NeRF if not frozen yet
-            if self.global_step == 5001:
+            if self.global_step == style_training_start_step + 1:
                 for param in self.model.sigma_net.parameters():
                     param.requires_grad = False
                 self.optimizer = optim.Adam(self.model.parameters(), lr=0.0001, weight_decay=5e-4)
@@ -445,12 +447,12 @@ class Trainer(object):
                 content_loss = get_content_loss(content_feat, output_content_feat)
                 style_loss = get_style_loss(style_feat_mean_std, output_style_feat_mean_std)
 
-                if self.global_step <= 6500:
+                if self.global_step <= style_training_start_step + 1500:
                     loss = content_loss
                 else:
                     loss = content_loss + style_loss
                 
-                if self.global_step == 5001:
+                if self.global_step == style_training_start_step + 1:
                     gt_image = ground_truth.detach()
                     gt_image = gt_image.reshape(67, 81, 3).permute(2,0,1).contiguous()
                     pred_image = prediction.detach()
