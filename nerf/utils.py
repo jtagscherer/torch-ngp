@@ -455,8 +455,6 @@ class Trainer(object):
 
                 prediction = preds[0]
 
-                self.model.train()
-
                 ground_truth = gt_rgb  # TODO: Is this really the right crop?
 
                 content_feat = self.style_model.get_content_feat(
