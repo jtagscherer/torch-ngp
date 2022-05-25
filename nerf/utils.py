@@ -453,7 +453,9 @@ class Trainer(object):
                 if self.ema is not None:
                     self.ema.restore()
 
-                prediction = preds[0]
+                prediction = preds[0].clone()
+
+                self.model.train()
 
                 ground_truth = gt_rgb  # TODO: Is this really the right crop?
 
