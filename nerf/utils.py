@@ -440,22 +440,22 @@ class Trainer(object):
                     'W': 81,
                 }
 
-                self.model.eval()
+                # self.model.eval()
 
                 if self.ema is not None:
                     self.ema.store()
                     self.ema.copy_to()
 
-                with torch.no_grad():
-                    with torch.cuda.amp.autocast(enabled=self.fp16):
-                        preds, preds_depth = self.test_step(data, bg_color=bg_color, perturb=True)
+                # with torch.no_grad():
+                with torch.cuda.amp.autocast(enabled=self.fp16):
+                    preds, preds_depth = self.test_step(data, bg_color=bg_color, perturb=True)
 
                 if self.ema is not None:
                     self.ema.restore()
 
-                prediction = preds[0].clone()
+                prediction = preds[0]# .clone()
 
-                self.model.train()
+                # self.model.train()
 
                 ground_truth = gt_rgb  # TODO: Is this really the right crop?
 
