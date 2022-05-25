@@ -430,8 +430,33 @@ class Trainer(object):
 
             if 'images' in data:
                 # Render patch and get corresponding ground truth image
-                prediction = self.model.render(rays_o, rays_d, staged=True, bg_color=bg_color, perturb=False,
-                                               **vars(self.opt))['image']
+                #prediction = self.model.render(rays_o, rays_d, staged=True, bg_color=bg_color, perturb=False,
+                #                               **vars(self.opt))['image']
+
+                data = {
+                    'rays_o': rays_o,
+                    'rays_d': rays_d,
+                    'H': 67,
+                    'W': 81,
+                }
+
+                self.model.eval()
+
+                if self.ema is not None:
+                    self.ema.store()
+                    self.ema.copy_to()
+
+                with torch.no_grad():
+                    with torch.cuda.amp.autocast(enabled=self.fp16):
+                        preds, preds_depth = self.test_step(data, bg_color=bg_color, perturb=True)
+
+                if self.ema is not None:
+                    self.ema.restore()
+
+                prediction = preds[0]
+
+                self.model.train()
+
                 ground_truth = gt_rgb  # TODO: Is this really the right crop?
 
                 content_feat = self.style_model.get_content_feat(
