@@ -96,11 +96,9 @@ def get_rays(poses, intrinsics, H, W, N=-1, error_map=None, random_patches=False
 
                 results['inds_coarse'] = inds_coarse  # need this when updating error_map
 
-                print('RANDOM INDICES:')
-                print(inds)
         else:
             # Patch-wise training - Random choose one fixed pixel per region (region is random size and random position)
-            total_inds = torch.arange(H * W).long().reshape(H, W)
+            total_inds = torch.arange(H * W).reshape(H, W)
             patch_H, patch_W = 67, 81
             num_region_H, num_region_W = H // patch_H, W // patch_W  # 16, 24(Family, Francis, Horse), #8, 12(Truck, PG)
 
@@ -109,11 +107,9 @@ def get_rays(poses, intrinsics, H, W, N=-1, error_map=None, random_patches=False
             region_position_v = np.random.randint(H - patch_H * region_size_v + region_size_v)
             region_position_u = np.random.randint(W - patch_W * region_size_u + region_size_u)
             inds = total_inds[region_position_v::region_size_v][:patch_H][:, region_position_u::region_size_u][:,
-                   :patch_W].long().reshape(-1)
+                   :patch_W].reshape(-1)
             inds = inds.expand([B, inds.size(0)])
             inds = inds.to(device)
-            print('PATCH INDICES:')
-            print(inds)
 
         i = torch.gather(i, -1, inds)
         j = torch.gather(j, -1, inds)
@@ -434,7 +430,7 @@ class Trainer(object):
 
             if 'images' in data:
                 # Render patch and get corresponding ground truth image
-                prediction = self.model.render(rays_o, rays_d, staged=False, bg_color=bg_color, perturb=True,
+                prediction = self.model.render(rays_o, rays_d, staged=True, bg_color=bg_color, perturb=False,
                                                **vars(self.opt))['image']
                 ground_truth = gt_rgb  # TODO: Is this really the right crop?
 
@@ -454,17 +450,17 @@ class Trainer(object):
                     loss = content_loss
                 else:
                     loss = content_loss + style_loss
-                
+
                 if self.global_step < style_training_start_step + 50:
-                    torch.set_printoptions(profile="full")
+                    '''torch.set_printoptions(profile="full")
                     self.log(f"Step {self.global_step} rays:")
                     self.log("Origins:")
                     self.log(rays_o)
                     self.log("Directions:")
                     self.log(rays_d)
                     self.log("\n\n")
-                    torch.set_printoptions(profile="default")
-                    
+                    torch.set_printoptions(profile="default")'''
+
                     gt_image = ground_truth.detach()
                     gt_image = gt_image.reshape(67, 81, 3).permute(2,0,1).contiguous()
                     pred_image = prediction.detach()
