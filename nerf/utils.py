@@ -507,7 +507,7 @@ class Trainer(object):
                           **vars(self.opt))['image']
         ground_truth = gt_rgb
         output_style_feats, output_style_feat_mean_std = self.style_model.get_style_feat(
-            prediction.reshape(67, 81, 3).permute(2, 0, 1).contiguous().unsqueeze(0))
+            style_prediction.reshape(67, 81, 3).permute(2, 0, 1).contiguous().unsqueeze(0))
         style_feats, style_feat_mean_std = self.style_model.get_style_feat(self.style_image.cuda().unsqueeze(0))
         style_loss = get_style_loss(style_feat_mean_std, output_style_feat_mean_std)
         enablePatchSampling(False)
