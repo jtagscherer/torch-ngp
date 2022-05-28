@@ -457,7 +457,7 @@ class Trainer(object):
 
                 # self.model.train()'''
 
-                ground_truth = gt_rgb  # TODO: Is this really the right crop?
+                ground_truth = gt_rgb
 
                 content_feat = self.style_model.get_content_feat(
                     ground_truth.reshape(67, 81, 3).permute(2,0,1).contiguous().unsqueeze(0))
@@ -471,10 +471,11 @@ class Trainer(object):
                 content_loss = get_content_loss(content_feat, output_content_feat)
                 style_loss = get_style_loss(style_feat_mean_std, output_style_feat_mean_std)
 
-                if self.global_step <= style_training_start_step + 1500:
+                loss = content_loss + style_loss
+                '''if self.global_step <= style_training_start_step + 1500:
                     loss = content_loss
                 else:
-                    loss = content_loss + style_loss
+                    loss = content_loss + style_loss'''
 
                 '''if self.global_step < style_training_start_step + 50:
                     torch.set_printoptions(profile="full")
