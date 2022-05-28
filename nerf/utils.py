@@ -163,7 +163,7 @@ def torch_vis_2d(x, renormalize=False):
         x = (x - x.min(axis=0, keepdims=True)) / (x.max(axis=0, keepdims=True) - x.min(axis=0, keepdims=True) + 1e-8)
 
     plt.imshow(x)
-    # plt.show()
+    plt.show()
 
 
 @torch.jit.script
@@ -416,17 +416,17 @@ class Trainer(object):
             bg_color = None
             gt_rgb = images
 
-        # style_training_start_step = 5000
+        style_training_start_step = 5000
 
-        '''if self.global_step == style_training_start_step:
-            enablePatchSampling(True)
+        #if self.global_step == style_training_start_step:
+        enablePatchSampling(True)
 
         if self.global_step > style_training_start_step:
             # Freeze NeRF if not frozen yet
             if self.global_step == style_training_start_step + 1:
                 for param in self.model.sigma_net.parameters():
                     param.requires_grad = False
-                self.optimizer = optim.Adam(self.model.parameters(), lr=0.0001, weight_decay=5e-4)
+                self.optimizer = optim.Adam(self.model.parameters(), lr=0.0005)
 
             if 'images' in data:
                 # Render patch and get corresponding ground truth image
@@ -445,14 +445,20 @@ class Trainer(object):
                 style_feats, style_feat_mean_std = self.style_model.get_style_feat(self.style_image.cuda().unsqueeze(0))
 
                 content_loss = get_content_loss(content_feat, output_content_feat)
+                nerf_loss = self.criterion(prediction, ground_truth).mean()
                 style_loss = get_style_loss(style_feat_mean_std, output_style_feat_mean_std)
 
                 if self.global_step <= style_training_start_step + 1500:
-                    loss = content_loss
+                    loss = content_loss + nerf_loss
                 else:
                     loss = content_loss + style_loss
+                
+                if self.global_step%2000==0:
+                    print(f'Content Loss: {content_loss}')
+                    print(f'Style Loss: {style_loss}')
+                    print(f'NeRF Loss: {nerf_loss}')
 
-                return prediction, ground_truth, loss'''
+                return prediction, ground_truth, loss
 
         # if there is no gt image, we train with CLIP loss.
         if 'images' not in data:
@@ -666,17 +672,18 @@ class Trainer(object):
         for _ in range(step):
 
             # mimic an infinite loop dataloader (in case the total dataset is smaller than step)
-            if self.global_step == 5001:
+            '''if self.global_step == 5001:
                         for param in self.model.sigma_net.parameters():
-                            param.requires_grad = False
+                            param.requires_grad = False'''
+            patch_data = None
             try:
                 data = next(loader)
-                if self.global_step > 5000:
+                '''if self.global_step > 5000:
                     enablePatchSampling(True)
                     patch_data = next(loader)
                     enablePatchSampling(False)
                 else:
-                    patch_data = None
+                    patch_data = None'''
             except StopIteration:
                 loader = iter(train_loader)
                 data = next(loader)
