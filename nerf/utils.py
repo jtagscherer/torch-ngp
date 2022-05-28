@@ -786,15 +786,16 @@ class Trainer(object):
 
         for data in loader:
 
+            enablePatchSampling(True)
+            patch_data = next(iter(loader))
+            enablePatchSampling(False)
+
             self.local_step += 1
             self.global_step += 1
 
             self.optimizer.zero_grad()
 
             with torch.cuda.amp.autocast(enabled=self.fp16):
-                enablePatchSampling(True)
-                patch_data = next(iter(loader))
-                enablePatchSampling(False)
                 preds, truths, loss = self.train_step(data, patch_data=patch_data)
 
             self.scaler.scale(loss).backward()
