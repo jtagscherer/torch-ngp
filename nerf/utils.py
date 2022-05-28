@@ -664,6 +664,9 @@ class Trainer(object):
             # mimic an infinite loop dataloader (in case the total dataset is smaller than step)
             try:
                 data = next(loader)
+                enablePatchSampling(True)
+                patch_data = next(loader)
+                enablePatchSampling(False)
             except StopIteration:
                 loader = iter(train_loader)
                 data = next(loader)
@@ -683,7 +686,7 @@ class Trainer(object):
             self.optimizer.zero_grad()
 
             with torch.cuda.amp.autocast(enabled=self.fp16):
-                preds, truths, loss = self.train_step(data)
+                preds, truths, loss = self.train_step(data, patch_data=patch_data)
 
             self.scaler.scale(loss).backward()
             self.scaler.step(self.optimizer)
