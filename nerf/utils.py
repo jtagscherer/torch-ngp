@@ -416,7 +416,7 @@ class Trainer(object):
             bg_color = None
             gt_rgb = images
 
-        style_training_start_step = 5000
+        '''style_training_start_step = 5000
 
         if self.global_step == style_training_start_step:
             enablePatchSampling(True)
@@ -433,30 +433,6 @@ class Trainer(object):
                 prediction = self.model.render(rays_o, rays_d, staged=False, bg_color=None, perturb=True, force_all_rays=True,
                                                **vars(self.opt))['image']
 
-                '''data = {
-                    'rays_o': rays_o,
-                    'rays_d': rays_d,
-                    'H': 67,
-                    'W': 81,
-                }
-
-                # self.model.eval()
-
-                if self.ema is not None:
-                    self.ema.store()
-                    self.ema.copy_to()
-
-                # with torch.no_grad():
-                with torch.cuda.amp.autocast(enabled=self.fp16):
-                    preds, preds_depth = self.test_step(data, bg_color=bg_color, perturb=True)
-
-                if self.ema is not None:
-                    self.ema.restore()
-
-                prediction = preds[0]# .clone()
-
-                # self.model.train()'''
-
                 ground_truth = gt_rgb
 
                 content_feat = self.style_model.get_content_feat(
@@ -471,32 +447,12 @@ class Trainer(object):
                 content_loss = get_content_loss(content_feat, output_content_feat)
                 style_loss = get_style_loss(style_feat_mean_std, output_style_feat_mean_std)
 
-                loss = style_loss
-                '''if self.global_step <= style_training_start_step + 1500:
+                if self.global_step <= style_training_start_step + 1500:
                     loss = content_loss
                 else:
-                    loss = content_loss + style_loss'''
+                    loss = content_loss + style_loss
 
-                '''if self.global_step < style_training_start_step + 50:
-                    torch.set_printoptions(profile="full")
-                    self.log(f"Step {self.global_step} rays:")
-                    self.log("Origins:")
-                    self.log(rays_o)
-                    self.log("Directions:")
-                    self.log(rays_d)
-                    self.log("\n\n")
-                    torch.set_printoptions(profile="default")
-
-                    gt_image = ground_truth.detach()
-                    gt_image = gt_image.reshape(67, 81, 3).permute(2,0,1).contiguous()
-                    pred_image = prediction.detach()
-                    pred_image = pred_image.reshape(67, 81, 3).permute(2,0,1).contiguous()
-                    torch_vis_2d(pred_image)
-                    plt.savefig(f'/tmp/nerfout/{self.global_step}_pred.png')
-                    torch_vis_2d(gt_image)
-                    plt.savefig(f'/tmp/nerfout/{self.global_step}_gt.png')'''
-
-                return prediction, ground_truth, loss
+                return prediction, ground_truth, loss'''
 
         # if there is no gt image, we train with CLIP loss.
         if 'images' not in data:
@@ -544,6 +500,20 @@ class Trainer(object):
 
             # put back
             self.error_map[index] = error_map
+
+        enablePatchSampling(True)
+        style_prediction = \
+        self.model.render(rays_o, rays_d, staged=False, bg_color=None, perturb=True, force_all_rays=True,
+                          **vars(self.opt))['image']
+        ground_truth = gt_rgb
+        output_style_feats, output_style_feat_mean_std = self.style_model.get_style_feat(
+            prediction.reshape(67, 81, 3).permute(2, 0, 1).contiguous().unsqueeze(0))
+        style_feats, style_feat_mean_std = self.style_model.get_style_feat(self.style_image.cuda().unsqueeze(0))
+        style_loss = get_style_loss(style_feat_mean_std, output_style_feat_mean_std)
+        enablePatchSampling(False)
+
+        style_percentage = np.max(0.5, self.global_step / 10000.0)
+        loss = (1 - style_percentage) * loss + style_percentage * style_loss
 
         loss = loss.mean()
 
