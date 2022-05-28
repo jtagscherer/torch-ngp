@@ -509,10 +509,14 @@ class Trainer(object):
             output_style_feats, output_style_feat_mean_std = self.style_model.get_style_feat(
                 style_prediction.reshape(67, 81, 3).permute(2, 0, 1).contiguous().unsqueeze(0))
             style_feats, style_feat_mean_std = self.style_model.get_style_feat(self.style_image.cuda().unsqueeze(0))
-            style_loss = get_style_loss(style_feat_mean_std, output_style_feat_mean_std)
 
-            style_percentage = max(0.5, self.global_step / 10000.0)
-            loss = (1 - style_percentage) * loss + style_percentage * style_loss
+            content_feat = self.style_model.get_content_feat(
+                    ground_truth.reshape(67, 81, 3).permute(2,0,1).contiguous().unsqueeze(0))
+            output_content_feat = self.style_model.get_content_feat(
+                    style_prediction.reshape(67, 81, 3).permute(2,0,1).contiguous().unsqueeze(0))
+            style_loss = get_style_loss(style_feat_mean_std, output_style_feat_mean_std)
+            content_loss = get_content_loss(content_feat, output_content_feat)
+            loss = content_loss
 
         loss = loss.mean()
 
@@ -664,9 +668,12 @@ class Trainer(object):
             # mimic an infinite loop dataloader (in case the total dataset is smaller than step)
             try:
                 data = next(loader)
-                enablePatchSampling(True)
-                patch_data = next(loader)
-                enablePatchSampling(False)
+                if self.global_step < 5000:
+                    enablePatchSampling(True)
+                    patch_data = next(loader)
+                    enablePatchSampling(False)
+                else:
+                    patch_data = None
             except StopIteration:
                 loader = iter(train_loader)
                 data = next(loader)
