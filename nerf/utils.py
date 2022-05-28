@@ -109,6 +109,7 @@ def get_rays(poses, intrinsics, H, W, N=-1, error_map=None, random_patches=False
             inds = total_inds[region_position_v::region_size_v][:patch_H][:, region_position_u::region_size_u][:,
                    :patch_W].reshape(-1)
             inds = inds.expand([B, inds.size(0)])
+            np.random.shuffle(inds)
             inds = inds.to(device)
 
         i = torch.gather(i, -1, inds)
@@ -430,10 +431,10 @@ class Trainer(object):
 
             if 'images' in data:
                 # Render patch and get corresponding ground truth image
-                #prediction = self.model.render(rays_o, rays_d, staged=True, bg_color=bg_color, perturb=False,
-                #                               **vars(self.opt))['image']
+                prediction = self.model.render(rays_o, rays_d, staged=False, bg_color=bg_color, perturb=True,
+                                               **vars(self.opt))['image']
 
-                data = {
+                '''data = {
                     'rays_o': rays_o,
                     'rays_d': rays_d,
                     'H': 67,
@@ -455,7 +456,7 @@ class Trainer(object):
 
                 prediction = preds[0]# .clone()
 
-                # self.model.train()
+                # self.model.train()'''
 
                 ground_truth = gt_rgb  # TODO: Is this really the right crop?
 
