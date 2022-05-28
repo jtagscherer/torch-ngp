@@ -416,9 +416,9 @@ class Trainer(object):
             bg_color = None
             gt_rgb = images
 
-        '''style_training_start_step = 5000
+        # style_training_start_step = 5000
 
-        if self.global_step == style_training_start_step:
+        '''if self.global_step == style_training_start_step:
             enablePatchSampling(True)
 
         if self.global_step > style_training_start_step:
@@ -516,7 +516,7 @@ class Trainer(object):
                     style_prediction.reshape(67, 81, 3).permute(2,0,1).contiguous().unsqueeze(0))
             style_loss = get_style_loss(style_feat_mean_std, output_style_feat_mean_std)
             content_loss = get_content_loss(content_feat, output_content_feat)
-            loss = content_loss
+            loss = content_loss+0.01*style_loss
 
         loss = loss.mean()
 
@@ -666,6 +666,9 @@ class Trainer(object):
         for _ in range(step):
 
             # mimic an infinite loop dataloader (in case the total dataset is smaller than step)
+            if self.global_step == 5001:
+                        for param in self.model.sigma_net.parameters():
+                            param.requires_grad = False
             try:
                 data = next(loader)
                 if self.global_step > 5000:
