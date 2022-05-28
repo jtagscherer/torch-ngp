@@ -471,7 +471,7 @@ class Trainer(object):
                 content_loss = get_content_loss(content_feat, output_content_feat)
                 style_loss = get_style_loss(style_feat_mean_std, output_style_feat_mean_std)
 
-                return 0.001 * content_loss + 0.999 * style_loss
+                loss = style_loss
                 '''if self.global_step <= style_training_start_step + 1500:
                     loss = content_loss
                 else:
