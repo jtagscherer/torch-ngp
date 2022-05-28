@@ -109,7 +109,6 @@ def get_rays(poses, intrinsics, H, W, N=-1, error_map=None, random_patches=False
             inds = total_inds[region_position_v::region_size_v][:patch_H][:, region_position_u::region_size_u][:,
                    :patch_W].reshape(-1)
             inds = inds.expand([B, inds.size(0)])
-            np.random.shuffle(inds)
             inds = inds.to(device)
 
         i = torch.gather(i, -1, inds)
@@ -421,7 +420,7 @@ class Trainer(object):
 
         if self.global_step == style_training_start_step:
             enablePatchSampling(True)
-        
+
         if self.global_step > style_training_start_step:
             # Freeze NeRF if not frozen yet
             if self.global_step == style_training_start_step + 1:
@@ -431,7 +430,7 @@ class Trainer(object):
 
             if 'images' in data:
                 # Render patch and get corresponding ground truth image
-                prediction = self.model.render(rays_o, rays_d, staged=False, bg_color=bg_color, perturb=True,
+                prediction = self.model.render(rays_o, rays_d, staged=False, bg_color=None, perturb=True, force_all_rays=True,
                                                **vars(self.opt))['image']
 
                 '''data = {
