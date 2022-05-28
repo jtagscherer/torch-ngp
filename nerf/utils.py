@@ -511,7 +511,7 @@ class Trainer(object):
             style_feats, style_feat_mean_std = self.style_model.get_style_feat(self.style_image.cuda().unsqueeze(0))
             style_loss = get_style_loss(style_feat_mean_std, output_style_feat_mean_std)
 
-            style_percentage = np.max(0.5, self.global_step / 10000.0)
+            style_percentage = max(0.5, self.global_step / 10000.0)
             loss = (1 - style_percentage) * loss + style_percentage * style_loss
 
         loss = loss.mean()
