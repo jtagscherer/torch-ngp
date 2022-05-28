@@ -416,7 +416,7 @@ class Trainer(object):
             bg_color = None
             gt_rgb = images
 
-        style_training_start_step = 3000
+        style_training_start_step = 5000
 
         if self.global_step == style_training_start_step:
             enablePatchSampling(True)
@@ -476,15 +476,15 @@ class Trainer(object):
                 else:
                     loss = content_loss + style_loss
 
-                if self.global_step < style_training_start_step + 50:
-                    '''torch.set_printoptions(profile="full")
+                '''if self.global_step < style_training_start_step + 50:
+                    torch.set_printoptions(profile="full")
                     self.log(f"Step {self.global_step} rays:")
                     self.log("Origins:")
                     self.log(rays_o)
                     self.log("Directions:")
                     self.log(rays_d)
                     self.log("\n\n")
-                    torch.set_printoptions(profile="default")'''
+                    torch.set_printoptions(profile="default")
 
                     gt_image = ground_truth.detach()
                     gt_image = gt_image.reshape(67, 81, 3).permute(2,0,1).contiguous()
@@ -493,7 +493,7 @@ class Trainer(object):
                     torch_vis_2d(pred_image)
                     plt.savefig(f'/tmp/nerfout/{self.global_step}_pred.png')
                     torch_vis_2d(gt_image)
-                    plt.savefig(f'/tmp/nerfout/{self.global_step}_gt.png')
+                    plt.savefig(f'/tmp/nerfout/{self.global_step}_gt.png')'''
 
                 return prediction, ground_truth, loss
 
