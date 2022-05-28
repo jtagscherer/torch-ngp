@@ -501,17 +501,18 @@ class Trainer(object):
             # put back
             self.error_map[index] = error_map
 
-        style_prediction = \
-        self.model.render(patch_data['rays_o'], patch_data['rays_d'], staged=False, bg_color=None, perturb=True, force_all_rays=True,
-                          **vars(self.opt))['image']
-        ground_truth = gt_rgb
-        output_style_feats, output_style_feat_mean_std = self.style_model.get_style_feat(
-            style_prediction.reshape(67, 81, 3).permute(2, 0, 1).contiguous().unsqueeze(0))
-        style_feats, style_feat_mean_std = self.style_model.get_style_feat(self.style_image.cuda().unsqueeze(0))
-        style_loss = get_style_loss(style_feat_mean_std, output_style_feat_mean_std)
+        if patch_data is not None:
+            style_prediction = \
+            self.model.render(patch_data['rays_o'], patch_data['rays_d'], staged=False, bg_color=None, perturb=True, force_all_rays=True,
+                              **vars(self.opt))['image']
+            ground_truth = gt_rgb
+            output_style_feats, output_style_feat_mean_std = self.style_model.get_style_feat(
+                style_prediction.reshape(67, 81, 3).permute(2, 0, 1).contiguous().unsqueeze(0))
+            style_feats, style_feat_mean_std = self.style_model.get_style_feat(self.style_image.cuda().unsqueeze(0))
+            style_loss = get_style_loss(style_feat_mean_std, output_style_feat_mean_std)
 
-        style_percentage = np.max(0.5, self.global_step / 10000.0)
-        loss = (1 - style_percentage) * loss + style_percentage * style_loss
+            style_percentage = np.max(0.5, self.global_step / 10000.0)
+            loss = (1 - style_percentage) * loss + style_percentage * style_loss
 
         loss = loss.mean()
 
