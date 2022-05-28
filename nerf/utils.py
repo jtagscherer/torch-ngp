@@ -505,7 +505,7 @@ class Trainer(object):
             style_prediction = \
             self.model.render(patch_data['rays_o'], patch_data['rays_d'], staged=False, bg_color=None, perturb=True, force_all_rays=True,
                               **vars(self.opt))['image']
-            ground_truth = gt_rgb
+            ground_truth = patch_data['images']
             output_style_feats, output_style_feat_mean_std = self.style_model.get_style_feat(
                 style_prediction.reshape(67, 81, 3).permute(2, 0, 1).contiguous().unsqueeze(0))
             style_feats, style_feat_mean_std = self.style_model.get_style_feat(self.style_image.cuda().unsqueeze(0))
@@ -668,7 +668,7 @@ class Trainer(object):
             # mimic an infinite loop dataloader (in case the total dataset is smaller than step)
             try:
                 data = next(loader)
-                if self.global_step < 5000:
+                if self.global_step > 5000:
                     enablePatchSampling(True)
                     patch_data = next(loader)
                     enablePatchSampling(False)
