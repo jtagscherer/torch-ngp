@@ -118,7 +118,7 @@ class NeRFGUI:
     def test_step(self):
         # TODO: seems we have to move data from GPU --> CPU --> GPU?
         self.render_step += 1
-        self.cam.orbit(math.sin(self.render_step / 1000.0) * 2, math.cos(self.render_step / 1000.0) * 2)
+        self.cam.orbit(math.sin(self.render_step / 10.0) * 2, math.cos(self.render_step / 10.0) * 2)
         self.need_update = True
 
         if self.need_update or self.spp < self.opt.max_spp:
@@ -154,15 +154,16 @@ class NeRFGUI:
             dpg.set_value("_log_spp", self.spp)
             dpg.set_value("_texture", self.render_buffer)
 
-        x = outputs['image']
-        if isinstance(x, torch.Tensor):
-            if len(x.shape) == 3:
-               x = x.permute(1, 2, 0).squeeze()
-            x = x.detach().cpu().numpy()
-        x = x.astype(np.float32)
-        plt.axis('off')
-        plt.imshow(x)
-        plt.savefig(f"/tmp/nerfrenders/{int(datetime.timestamp(datetime.now()))}.png", bbox_inches='tight')
+        if self.render_step % 10 == 0:
+            x = outputs['image']
+            if isinstance(x, torch.Tensor):
+                if len(x.shape) == 3:
+                   x = x.permute(1, 2, 0).squeeze()
+                x = x.detach().cpu().numpy()
+            x = x.astype(np.float32)
+            plt.axis('off')
+            plt.imshow(x)
+            plt.savefig(f"/tmp/nerfrenders/{int(datetime.timestamp(datetime.now()))}.png", bbox_inches='tight')
 
     def register_dpg(self):
 
