@@ -51,6 +51,11 @@ class OrbitCamera:
         # wrong: rotate along global x/y axis
         # self.rot = R.from_euler('xy', [-dy * 0.1, -dx * 0.1], degrees=True) * self.rot
 
+    def set_orbit(self, x, y):
+        rotvec_x = np.radians(-0.1 * x)
+        rotvec_y = np.radians(-0.1 * y)
+        self.rot = R.from_rotvec(rotvec_x) * R.from_rotvec(rotvec_y)
+
     def scale(self, delta):
         self.radius *= 1.1 ** (-delta)
 
@@ -120,7 +125,7 @@ class NeRFGUI:
         self.render_step += 1
 
         if self.render_step % 5 == 0:
-            self.cam.orbit(math.sin(self.render_step / 1000.0) * 10, math.cos(self.render_step / 1000.0) * 10)
+            self.cam.set_orbit(math.sin(self.render_step / 1000.0) * 10, math.cos(self.render_step / 1000.0) * 10)
             self.need_update = True
 
         if self.need_update or self.spp < self.opt.max_spp:
