@@ -153,10 +153,9 @@ class NeRFGUI:
             dpg.set_value("_log_spp", self.spp)
             dpg.set_value("_texture", self.render_buffer)
 
-        im = Image.fromarray(self.render_buffer, "RGB")
+        im = Image.fromarray(self.render_buffer * 255, "RGB")
         im.save(f"/tmp/nerfrenders/{self.render_step:09d}.jpeg")
         print(f"{self.render_step:09d}.jpeg: {datetime.timestamp(datetime.now())}")
-        print(self.render_buffer)
 
     def register_dpg(self):
 
