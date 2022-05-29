@@ -118,7 +118,7 @@ class NeRFGUI:
     def test_step(self):
         # TODO: seems we have to move data from GPU --> CPU --> GPU?
         self.render_step += 1
-        self.cam.orbit(math.sin(self.render_step / 1000.0) * 0.01, math.cos(self.render_step / 1000.0) * 0.01)
+        self.cam.orbit(math.sin(self.render_step / 1000.0) * 0.05, math.cos(self.render_step / 1000.0) * 0.05)
         self.need_update = True
 
         if self.need_update or self.spp < self.opt.max_spp:
@@ -154,7 +154,7 @@ class NeRFGUI:
             dpg.set_value("_log_spp", self.spp)
             dpg.set_value("_texture", self.render_buffer)
 
-        if self.render_step % 10 == 0:
+        if self.render_step % 100 == 0:
             x = outputs['image']
             if isinstance(x, torch.Tensor):
                 if len(x.shape) == 3:
