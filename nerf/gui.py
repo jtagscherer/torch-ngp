@@ -119,8 +119,8 @@ class NeRFGUI:
         # TODO: seems we have to move data from GPU --> CPU --> GPU?
         self.render_step += 1
 
-        if self.render_step % 10 == 0:
-            self.cam.orbit(math.sin(self.render_step / 1000.0) * 0.5, math.cos(self.render_step / 1000.0) * 0.5)
+        if self.render_step % 5 == 0:
+            self.cam.orbit(math.sin(self.render_step / 1000.0) * 10, math.cos(self.render_step / 1000.0) * 10)
             self.need_update = True
 
         if self.need_update or self.spp < self.opt.max_spp:
