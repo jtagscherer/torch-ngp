@@ -4,7 +4,7 @@ import numpy as np
 import dearpygui.dearpygui as dpg
 from scipy.spatial.transform import Rotation as R
 import PIL.Image as Image
-from time import time
+from datetime import datetime
 
 from nerf.utils import *
 
@@ -153,9 +153,10 @@ class NeRFGUI:
             dpg.set_value("_log_spp", self.spp)
             dpg.set_value("_texture", self.render_buffer)
 
-        im = Image.fromarray(self.render_buffer)
+        im = Image.fromarray(self.render_buffer, "RGB")
         im.save(f"/tmp/nerfrenders/{self.render_step:09d}.jpeg")
-        print(f"{self.render_step:09d}.jpeg: {int(time())}")
+        print(f"{self.render_step:09d}.jpeg: {datetime.timestamp(datetime.now())}")
+        print(self.render_buffer)
 
     def register_dpg(self):
 
