@@ -52,6 +52,7 @@ class OrbitCamera:
         # self.rot = R.from_euler('xy', [-dy * 0.1, -dx * 0.1], degrees=True) * self.rot
 
     def set_orbit(self, x, y):
+        side = self.rot.as_matrix()[:3, 0]
         rotvec_x = self.up * np.radians(-0.1 * x)
         rotvec_y = side * np.radians(-0.1 * y)
         self.rot = R.from_rotvec(rotvec_x) * R.from_rotvec(rotvec_y)
