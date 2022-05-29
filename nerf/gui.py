@@ -3,8 +3,9 @@ import torch
 import numpy as np
 import dearpygui.dearpygui as dpg
 from scipy.spatial.transform import Rotation as R
-import PIL.Image as Image
+
 from datetime import datetime
+import matplotlib.pyplot as plt
 
 from nerf.utils import *
 
@@ -117,7 +118,7 @@ class NeRFGUI:
     def test_step(self):
         # TODO: seems we have to move data from GPU --> CPU --> GPU?
         self.render_step += 1
-        self.cam.orbit(math.sin(self.render_step / 100.0) * 4, math.cos(self.render_step / 100.0) * 4)
+        self.cam.orbit(math.sin(self.render_step / 1000.0) * 4, math.cos(self.render_step / 1000.0) * 4)
         self.need_update = True
 
         if self.need_update or self.spp < self.opt.max_spp:
@@ -153,9 +154,15 @@ class NeRFGUI:
             dpg.set_value("_log_spp", self.spp)
             dpg.set_value("_texture", self.render_buffer)
 
-        im = Image.fromarray(self.render_buffer * 255, "RGB")
-        im.save(f"/tmp/nerfrenders/{self.render_step:09d}.jpeg")
-        print(f"{self.render_step:09d}.jpeg: {datetime.timestamp(datetime.now())}")
+        x = outputs['image']
+        if isinstance(x, torch.Tensor):
+            if len(x.shape) == 3:
+               x = x.permute(1, 2, 0).squeeze()
+            x = x.detach().cpu().numpy()
+        x = x.astype(np.float32)
+        plt.axis('off')
+        plt.imshow(x)
+        plt.savefig(f"/tmp/nerfrenders/{int(datetime.timestamp(datetime.now()))}.png", bbox_inches='tight')
 
     def register_dpg(self):
 
