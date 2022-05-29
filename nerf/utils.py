@@ -453,10 +453,10 @@ class Trainer(object):
                 else:
                     loss = content_loss + style_loss
                 
-                if self.global_step%2000==0:
+                '''if self.global_step%2000==0:
                     print(f'Content Loss: {content_loss}')
                     print(f'Style Loss: {style_loss}')
-                    print(f'NeRF Loss: {nerf_loss}')
+                    print(f'NeRF Loss: {nerf_loss}')'''
 
                 return prediction, ground_truth, loss
 

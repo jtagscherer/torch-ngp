@@ -3,6 +3,8 @@ import torch
 import numpy as np
 import dearpygui.dearpygui as dpg
 from scipy.spatial.transform import Rotation as R
+import PIL.Image as Image
+from time import time
 
 from nerf.utils import *
 
@@ -150,6 +152,10 @@ class NeRFGUI:
             dpg.set_value("_log_resolution", f'{int(self.downscale * self.W)}x{int(self.downscale * self.H)}')
             dpg.set_value("_log_spp", self.spp)
             dpg.set_value("_texture", self.render_buffer)
+
+        im = Image.fromarray(self.render_buffer)
+        im.save(f"/tmp/nerfrenders/{self.render_step:09d}.jpeg")
+        print(f"{self.render_step:09d}.jpeg: {int(time())}")
 
     def register_dpg(self):
 
