@@ -51,12 +51,6 @@ class OrbitCamera:
         # wrong: rotate along global x/y axis
         # self.rot = R.from_euler('xy', [-dy * 0.1, -dx * 0.1], degrees=True) * self.rot
 
-    def set_orbit(self, x, y):
-        side = self.rot.as_matrix()[:3, 0]
-        rotvec_x = self.up * np.radians(-0.1 * x)
-        rotvec_y = side * np.radians(-0.1 * y)
-        self.rot = R.from_rotvec(rotvec_x) * R.from_rotvec(rotvec_y)
-
     def scale(self, delta):
         self.radius *= 1.1 ** (-delta)
 
@@ -125,8 +119,8 @@ class NeRFGUI:
         # TODO: seems we have to move data from GPU --> CPU --> GPU?
         self.render_step += 1
 
-        if self.render_step % 5 == 0:
-            self.cam.set_orbit(math.sin(self.render_step / 1000.0) * 10, math.cos(self.render_step / 1000.0) * 10)
+        if self.render_step % 10 == 0:
+            self.cam.orbit(math.sin(self.render_step / 10.0) * 20, math.cos(self.render_step / 10.0) * 20)
             self.need_update = True
 
         if self.need_update or self.spp < self.opt.max_spp:
@@ -162,7 +156,7 @@ class NeRFGUI:
             dpg.set_value("_log_spp", self.spp)
             dpg.set_value("_texture", self.render_buffer)
 
-        if self.render_step % 1000 == 0:
+        '''if self.render_step % 1 == 0:
             x = outputs['image']
             if isinstance(x, torch.Tensor):
                 if len(x.shape) == 3:
@@ -171,7 +165,7 @@ class NeRFGUI:
             x = x.astype(np.float32)
             plt.axis('off')
             plt.imshow(x)
-            plt.savefig(f"/tmp/nerfrenders/{int(datetime.timestamp(datetime.now()))}.png", bbox_inches='tight')
+            plt.savefig(f"/tmp/nerfrenders/{int(datetime.timestamp(datetime.now()))}.png", bbox_inches='tight')'''
 
     def register_dpg(self):
 
