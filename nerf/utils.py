@@ -438,7 +438,7 @@ class Trainer(object):
                 prediction = outputs['image']
                 prediction_depth = outputs['depth']
 
-                if self.global_step % 100 == 0:
+                if self.global_step < style_training_start_step + 100:
                     # Render predictions and depth maps
                     pred_image = prediction.detach()
                     pred_image = pred_image.reshape(67, 81, 3).permute(2, 0, 1).contiguous()
