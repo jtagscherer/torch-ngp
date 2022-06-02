@@ -443,7 +443,7 @@ class Trainer(object):
                     pred_image = prediction.detach()
                     pred_image = pred_image.reshape(67, 81, 3).permute(2, 0, 1).contiguous()
                     depth_image = prediction_depth.detach()
-                    depth_image = depth_image.reshape(67, 81, 3).permute(2, 0, 1).contiguous()
+                    depth_image = depth_image.reshape(67, 81, 1).permute(2, 0, 1).contiguous()
                     torch_vis_2d(pred_image)
                     plt.savefig(f'/tmp/nerfout/{self.global_step}_pred.png')
                     torch_vis_2d(depth_image)
