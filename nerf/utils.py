@@ -430,8 +430,24 @@ class Trainer(object):
 
             if 'images' in data:
                 # Render patch and get corresponding ground truth image
-                prediction = self.model.render(rays_o, rays_d, staged=False, bg_color=None, perturb=True, force_all_rays=True,
-                                               **vars(self.opt))['image']
+                #prediction = self.model.render(rays_o, rays_d, staged=False, bg_color=None, perturb=True, force_all_rays=True,
+                #                               **vars(self.opt))['image']
+                outputs = self.model.render(rays_o, rays_d, staged=False, bg_color=None, perturb=True, force_all_rays=True,
+                                            **vars(self.opt))
+
+                prediction = outputs['image']
+                prediction_depth = outputs['depth']
+
+                if self.global_step % 100 == 0:
+                    # Render predictions and depth maps
+                    pred_image = prediction.detach()
+                    pred_image = pred_image.reshape(67, 81, 3).permute(2, 0, 1).contiguous()
+                    depth_image = prediction_depth.detach()
+                    depth_image = depth_image.reshape(67, 81, 3).permute(2, 0, 1).contiguous()
+                    torch_vis_2d(pred_image)
+                    plt.savefig(f'/tmp/nerfout/{self.global_step}_pred.png')
+                    torch_vis_2d(depth_image)
+                    plt.savefig(f'/tmp/nerfout/{self.global_step}_depth.png')
 
                 ground_truth = gt_rgb
 
