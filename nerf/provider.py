@@ -11,7 +11,7 @@ import trimesh
 import torch
 from torch.utils.data import DataLoader
 
-from .utils import get_rays
+from .utils import *
 
 
 # ref: https://github.com/NVlabs/instant-ngp/blob/b76004c8cf478880227401ae763be4c02f80b62f/include/neural-graphics-primitives/nerf_loader.h#L50
@@ -87,6 +87,7 @@ def rand_poses(size, device, radius=1, theta_range=[np.pi/3, 2*np.pi/3], phi_ran
 
 
 class NeRFDataset:
+
     def __init__(self, opt, device, type='train', downscale=1, n_test=10):
         super().__init__()
         
@@ -271,8 +272,8 @@ class NeRFDataset:
         poses = self.poses[index].to(self.device) # [B, 4, 4]
 
         error_map = None if self.error_map is None else self.error_map[index]
-        
-        rays = get_rays(poses, self.intrinsics, self.H, self.W, self.num_rays, error_map)
+
+        rays = get_rays(poses, self.intrinsics, self.H, self.W, self.num_rays, error_map,random_patches=getPatchSampling())
         
         results = {
             'H': self.H,
