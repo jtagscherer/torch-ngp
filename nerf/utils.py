@@ -294,6 +294,7 @@ class Trainer(object):
         self.device = device if device is not None else torch.device(
             f'cuda:{local_rank}' if torch.cuda.is_available() else 'cpu')
         self.console = Console()
+        self.style_training_start_step = 5000
 
         model.to(self.device)
         if self.world_size > 1:
@@ -416,17 +417,16 @@ class Trainer(object):
             bg_color = None
             gt_rgb = images
 
-        style_training_start_step = 5000
-
         #if self.global_step == style_training_start_step:
         enablePatchSampling(True)
 
-        if self.global_step > style_training_start_step:
+        if self.global_step > self.style_training_start_step:
             # Freeze NeRF if not frozen yet
-            if self.global_step == style_training_start_step + 1:
+            if self.global_step == self.style_training_start_step + 1:
                 for param in self.model.sigma_net.parameters():
                     param.requires_grad = False
-                self.optimizer = optim.Adam(self.model.parameters(), lr=0.0005)
+                if not self.opt.hp_tuning:
+                    self.optimizer = optim.Adam(self.model.parameters(), lr=0.0005)
 
             if 'images' in data:
                 # Render patch and get corresponding ground truth image
@@ -448,7 +448,7 @@ class Trainer(object):
                 nerf_loss = self.criterion(prediction, ground_truth).mean()
                 style_loss = get_style_loss(style_feat_mean_std, output_style_feat_mean_std)
 
-                if self.global_step <= style_training_start_step + 1500:
+                if self.global_step <= self.style_training_start_step + 1500:
                     loss = content_loss + nerf_loss
                 else:
                     loss = content_loss + style_loss

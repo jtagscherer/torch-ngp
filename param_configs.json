@@ -1,0 +1,15 @@
+[
+    {
+        "nerf_steps": 5000,
+        "use_lr_schedule": false,
+        "lr": 0.0005,
+        "style_steps": 10000
+
+    },
+    {
+        "nerf_steps": 7000,
+        "use_lr_schedule": true,
+        "lr": 0.0006,
+        "style_steps": 8000
+    }
+]

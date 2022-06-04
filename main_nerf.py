@@ -5,6 +5,7 @@ from nerf.provider import NeRFDataset
 from nerf.gui import NeRFGUI
 from nerf.utils import *
 from matplotlib import pyplot as plt
+import json
 
 #torch.autograd.set_detect_anomaly(True)
 
@@ -56,6 +57,10 @@ if __name__ == '__main__':
     parser.add_argument('--rand_pose', type=int, default=-1, help="<0 uses no rand pose, =0 only uses rand pose, >0 sample one rand pose every $ known poses")
 
     parser.add_argument('--debug', action='store_true', help="Debug mode")
+
+    ### Hyperparam tuning
+    parser.add_argument('--hp_tuning', action='store_true', help="Hyperparameter tuning")
+    parser.add_argument('--param_configs', type=str, default='param_configs.json')
 
     opt = parser.parse_args()
 
@@ -125,7 +130,31 @@ if __name__ == '__main__':
                 trainer.test(test_loader) # colmap doesn't have gt, so just test.
             
             #trainer.save_mesh(resolution=256, threshold=10)
-    
+    elif opt.hp_tuning:
+        with open(opt.param_configs) as json_file:
+            param_configs = json.load(json_file)
+        for idx, param_config in enumerate(param_configs):
+            #train NeRF
+            optimizer = lambda model: torch.optim.Adam([
+            {'name': 'encoding', 'params': list(model.encoder.parameters())},
+            {'name': 'net', 'params': list(model.sigma_net.parameters()) + list(model.color_net.parameters()), 'weight_decay': 1e-6},
+            ], lr=opt.lr, betas=(0.9, 0.99), eps=1e-15)
+            train_loader = NeRFDataset(opt, device=device, type='train').dataloader()
+            scheduler = lambda optimizer: optim.lr_scheduler.LambdaLR(optimizer, lambda iter: 0.1 ** min(iter / opt.iters, 1))
+            trainer = Trainer('ngp', opt, model, device=device, workspace=opt.workspace, optimizer=optimizer, criterion=criterion, ema_decay=0.95, fp16=opt.fp16, lr_scheduler=scheduler, scheduler_update_every_step=True, metrics=[PSNRMeter()], use_checkpoint=opt.ckpt, eval_interval=50)
+            outputs = trainer.train_gui(train_loader=train_loader, step=param_config["nerf_steps"])
+            print(f"NeRF Training done for Config {idx}. Loss: {outputs['loss']}")
+            #Freeze parameters
+            for param in trainer.model.sigma_net.parameters():
+                        param.requires_grad = False
+
+            #train style transfer
+            trainer.optimizer = optim.Adam(trainer.model.parameters(), lr=param_config['lr'])
+            if param_config['use_lr_schedule']:
+                scheduler = lambda optimizer: optim.lr_scheduler.LambdaLR(optimizer, lambda iter: 0.1 ** min(iter-param_config['nerf_steps'] / opt.iters-param_config['nerf_steps'], 1))
+                trainer.lr_scheduler=scheduler
+            outputs =trainer.train_gui(train_loader=train_loader,step=param_config['style_steps'])
+            print(f"Style Training done for Config {idx}. Loss: {outputs['loss']}")
     else:
 
         optimizer = lambda model: torch.optim.Adam([
