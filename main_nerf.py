@@ -131,6 +131,7 @@ if __name__ == '__main__':
             
             #trainer.save_mesh(resolution=256, threshold=10)
     elif opt.hp_tuning:
+        results = []
         with open(opt.param_configs) as json_file:
             param_configs = json.load(json_file)
         for idx, param_config in enumerate(param_configs):
@@ -155,6 +156,12 @@ if __name__ == '__main__':
                 trainer.lr_scheduler=scheduler
             outputs =trainer.train_gui(train_loader=train_loader,step=param_config['style_steps'])
             print(f"Style Training done for Config {idx}. Loss: {outputs['loss']}")
+            results.append(outputs['loss'])
+        for idx, _ in enumerate(param_configs):
+            print(f"Endresult of Config {idx}: {results[idx]}")
+        min_val = min(results)
+        min_idx = results.index(min_val)
+        print(f"Best Config is Config {min_idx} with Loss {min_val}")
     else:
 
         optimizer = lambda model: torch.optim.Adam([
