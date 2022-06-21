@@ -142,7 +142,7 @@ if __name__ == '__main__':
             ], lr=opt.lr, betas=(0.9, 0.99), eps=1e-15)
             train_loader = NeRFDataset(opt, device=device, type='train').dataloader()
             scheduler = lambda optimizer: optim.lr_scheduler.LambdaLR(optimizer, lambda iter: 0.1 ** min(iter / opt.iters, 1))
-            trainer = Trainer('ngp', opt, model, device=device, workspace=opt.workspace, optimizer=optimizer, criterion=criterion, ema_decay=0.95, fp16=opt.fp16, lr_scheduler=scheduler, scheduler_update_every_step=True, metrics=[PSNRMeter()], use_checkpoint=opt.ckpt, eval_interval=50)
+            trainer = Trainer('ngp', opt, model, device=device, workspace=opt.workspace, optimizer=optimizer, criterion=criterion, ema_decay=0.95, fp16=opt.fp16, lr_scheduler=scheduler, scheduler_update_every_step=True, metrics=[PSNRMeter()], use_checkpoint=opt.ckpt, eval_interval=50, style_training_start_step=param_config['nerf_steps'])
             outputs = trainer.train_gui(train_loader=train_loader, step=param_config["nerf_steps"])
             print(f"NeRF Training done for Config {idx}. Loss: {outputs['loss']}")
             #Freeze parameters

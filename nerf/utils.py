@@ -271,6 +271,7 @@ class Trainer(object):
                  use_checkpoint="latest",  # which ckpt to use at init time
                  use_tensorboardX=True,  # whether to use tensorboard for logging
                  scheduler_update_every_step=False,  # whether to call scheduler.step() after every train step
+                 style_training_start_step = 5000
                  ):
 
         self.name = name
@@ -294,7 +295,7 @@ class Trainer(object):
         self.device = device if device is not None else torch.device(
             f'cuda:{local_rank}' if torch.cuda.is_available() else 'cpu')
         self.console = Console()
-        self.style_training_start_step = 5000
+        self.style_training_start_step = style_training_start_step
 
         model.to(self.device)
         if self.world_size > 1:
