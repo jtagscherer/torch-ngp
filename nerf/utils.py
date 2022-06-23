@@ -163,7 +163,7 @@ def torch_vis_2d(x, renormalize=False):
         x = (x - x.min(axis=0, keepdims=True)) / (x.max(axis=0, keepdims=True) - x.min(axis=0, keepdims=True) + 1e-8)
 
     plt.imshow(x)
-    plt.show()
+    # plt.show()
 
 
 @torch.jit.script
@@ -430,8 +430,24 @@ class Trainer(object):
 
             if 'images' in data:
                 # Render patch and get corresponding ground truth image
-                prediction = self.model.render(rays_o, rays_d, staged=False, bg_color=None, perturb=True, force_all_rays=True,
-                                               **vars(self.opt))['image']
+                #prediction = self.model.render(rays_o, rays_d, staged=False, bg_color=None, perturb=True, force_all_rays=True,
+                #                               **vars(self.opt))['image']
+                outputs = self.model.render(rays_o, rays_d, staged=False, bg_color=None, perturb=True, force_all_rays=True,
+                                            **vars(self.opt))
+
+                prediction = outputs['image']
+                prediction_depth = outputs['depth']
+
+                '''if self.global_step < style_training_start_step + 100:
+                    # Render predictions and depth maps
+                    pred_image = prediction.detach()
+                    pred_image = pred_image.reshape(67, 81, 3).permute(2, 0, 1).contiguous()
+                    depth_image = prediction_depth.detach()
+                    depth_image = depth_image.reshape(67, 81, 1).permute(2, 0, 1).contiguous()
+                    torch_vis_2d(pred_image)
+                    plt.savefig(f'/tmp/nerfout/{self.global_step}_pred.png')
+                    torch_vis_2d(depth_image)
+                    plt.savefig(f'/tmp/nerfout/{self.global_step}_depth.png')'''
 
                 ground_truth = gt_rgb
 
