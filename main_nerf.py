@@ -152,8 +152,7 @@ if __name__ == '__main__':
             #train style transfer
             trainer.optimizer = optim.Adam(trainer.model.parameters(), lr=param_config['lr'])
             if param_config['use_lr_schedule']:
-                scheduler = lambda optimizer: optim.lr_scheduler.LambdaLR(optimizer, lambda iter: 0.1 ** min(iter-param_config['nerf_steps'] / opt.iters-param_config['nerf_steps'], 1))
-                trainer.lr_scheduler=scheduler
+                trainer.lr_scheduler = optim.lr_scheduler.LambdaLR(optimizer, lambda iter: 0.1 ** min(iter-param_config['nerf_steps'] / (opt.iters-param_config['nerf_steps']), 1))
             outputs =trainer.train_gui(train_loader=train_loader,step=param_config['style_steps'])
             print(f"Style Training done for Config {idx}. Loss: {outputs['loss']}")
             results.append(outputs['loss'])
