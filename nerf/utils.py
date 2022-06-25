@@ -153,6 +153,9 @@ def get_rays(poses, intrinsics, H, W, N=-1, error_map=None, random_patches=False
                 inds = inds.expand([B, inds.size(0)])
                 inds = inds.to(device)
 
+                # Save all inds for depth aware style transfer
+                results['total_inds'] = total_inds
+
         i = torch.gather(i, -1, inds)
         j = torch.gather(j, -1, inds)
 

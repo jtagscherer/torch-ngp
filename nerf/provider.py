@@ -281,6 +281,7 @@ class NeRFDataset:
             'rays_o': rays['rays_o'],
             'rays_d': rays['rays_d'],
             'inds' : rays['inds'],
+            'total_inds': rays['total_inds'],
             'poses': poses,
             'intrinsics': self.intrinsics
         }
