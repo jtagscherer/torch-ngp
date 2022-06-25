@@ -78,11 +78,11 @@ def resample_rays(prediction_depth, depth_layers=4, patch_H=67, patch_W=81, H=10
         while not ind_found:
             random_layer = dist.sample()
             possible_patches = total_patches[(depthmap==random_layer)&not_sampled]
-            random_patch = possible_patches[torch.randint(possible_patches.size(0))]
+            random_patch = possible_patches[torch.randint(possible_patches.size(0),(1,))]
             offset_W = random_patch%patch_W
             offset_H = random_patch//patch_W
             possible_inds = total_inds[offset_H*region_H:offset_H*region_H+region_H,offset_W*region_W:offset_W*region_W+region_W].reshape(-1)
-            random_ind = possible_inds[torch.randint(possible_inds.size(0))]
+            random_ind = possible_inds[torch.randint(possible_inds.size(0),(1,))]
             if random_ind in inds:
                 break
             else:
@@ -161,10 +161,6 @@ def get_rays(poses, intrinsics, H, W, N=-1, error_map=None, random_patches=False
 
     else:
         inds = torch.arange(H * W, device=device).expand([B, H * W])
-    
-    # Save all inds for depth aware style transfer
-    total_inds = total_inds.to(device)
-    results['total_inds'] = total_inds
 
     zs = torch.ones_like(i)
     xs = (i - cx) / fx * zs
@@ -489,7 +485,7 @@ class Trainer(object):
                 rays_o = rays['rays_o']  # [B, N, 3]
                 rays_d = rays['rays_d']  # [B, N, 3]
 
-                gt_rgb = torch.gather(data['total_images'].view(B, -1, 3), 1, torch.stack(C * [rays['inds']], -1)) # [B, N, 3/4]
+                gt_rgb = torch.gather(data['total_image'].view(B, -1, 3), 1, torch.stack(C * [rays['inds']], -1)) # [B, N, 3/4]
 
                 if self.global_step < style_training_start_step + 10:
                     # Render predictions and depth maps

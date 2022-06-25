@@ -281,9 +281,9 @@ class NeRFDataset:
             'rays_o': rays['rays_o'],
             'rays_d': rays['rays_d'],
             'inds' : rays['inds'],
-            'total_inds': rays['total_inds'],
             'poses': poses,
-            'intrinsics': self.intrinsics
+            'intrinsics': self.intrinsics,
+            'total_image': self.images[index]
         }
 
         if self.images is not None:
@@ -291,15 +291,12 @@ class NeRFDataset:
             if self.training:
                 C = images.shape[-1]
                 images = torch.gather(images.view(B, -1, C), 1, torch.stack(C * [rays['inds']], -1)) # [B, N, 3/4]
-                total_images =torch.gather(images.view(B, -1, C), 1, torch.stack(C * [rays['total_inds']], -1)) # [B, N, 3/4]
             results['images'] = images
-            results['total_images'] = total_images
         
         # need inds to update error_map
         if error_map is not None:
             results['index'] = index
-            results['inds_coarse'] = rays['inds_coarse']
-            
+            results['inds_coarse'] = rays['inds_coarse']    
         return results
 
     def dataloader(self):
