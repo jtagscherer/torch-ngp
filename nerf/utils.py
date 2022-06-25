@@ -57,7 +57,7 @@ def resample_rays(prediction_depth, depth_layers=4, patch_H=67, patch_W=81, H=10
     prediction_depth = prediction_depth.reshape(patch_H,patch_W)
     max_depth = torch.max(prediction_depth)
     min_depth = torch.min(prediction_depth)
-    step_size = (max_depth-min_depth)//depth_layers
+    step_size = (max_depth-min_depth)/depth_layers
     depthmap = torch.ones_like(prediction_depth)
     for i in range(depth_layers):
         depthmap[(prediction_depth>=(min_depth+i*step_size))&(prediction_depth<(min_depth+(i+1)*step_size))] = i
@@ -84,9 +84,9 @@ def resample_rays(prediction_depth, depth_layers=4, patch_H=67, patch_W=81, H=10
             possible_inds = total_inds[offset_H*region_H:offset_H*region_H+region_H,offset_W*region_W:offset_W*region_W+region_W].reshape(-1)
             random_ind = possible_inds[torch.randint(possible_inds.size(0),(1,))]
             if random_ind in inds:
-                break
+                continue
             else:
-                inds = torch.cat(inds,torch.tensor([random_ind]),0)
+                inds = torch.cat((inds,torch.tensor([random_ind])),0)
                 ind_found = True
                 not_sampled[total_patches==random_patch] = False
                 if not (True in not_sampled[depthmap==random_layer]):
@@ -487,6 +487,10 @@ class Trainer(object):
 
                 gt_rgb = torch.gather(data['total_image'].view(B, -1, 3), 1, torch.stack(C * [rays['inds']], -1)) # [B, N, 3/4]
 
+                outputs = self.model.render(rays_o, rays_d, staged=False, bg_color=None, perturb=True, force_all_rays=True,
+                                            **vars(self.opt))
+                prediction = outputs['image']
+
                 if self.global_step < style_training_start_step + 10:
                     # Render predictions and depth maps
                     pred_image = prediction.detach()
@@ -494,13 +498,9 @@ class Trainer(object):
                     depth_image = prediction_depth.detach()
                     depth_image = depth_image.reshape(67, 81, 1).permute(2, 0, 1).contiguous()
                     torch_vis_2d(pred_image)
-                    plt.savefig(f'/tmp/nerfout/{self.global_step}_pred.png')
+                    plt.savefig(f'/tmp/nerfout/{self.global_step}_pred_wd.png')
                     torch_vis_2d(depth_image)
-                    plt.savefig(f'/tmp/nerfout/{self.global_step}_depth.png')
-
-                outputs = self.model.render(rays_o, rays_d, staged=False, bg_color=None, perturb=True, force_all_rays=True,
-                                            **vars(self.opt))
-                prediction = outputs['image']
+                    plt.savefig(f'/tmp/nerfout/{self.global_step}_depth_wd.png')
 
                 ground_truth = gt_rgb
 
