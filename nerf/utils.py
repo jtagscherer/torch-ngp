@@ -163,6 +163,7 @@ def get_rays(poses, intrinsics, H, W, N=-1, error_map=None, random_patches=False
         inds = torch.arange(H * W, device=device).expand([B, H * W])
     
     # Save all inds for depth aware style transfer
+    total_inds = total_inds.to(device)
     results['total_inds'] = total_inds
 
     zs = torch.ones_like(i)
