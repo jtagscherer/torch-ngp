@@ -280,10 +280,7 @@ class NeRFDataset:
             'W': self.W,
             'rays_o': rays['rays_o'],
             'rays_d': rays['rays_d'],
-            'rays_o_tot': rays['rays_o_tot'],
-            'rays_d_tot': rays['rays_d_tot'],
             'inds' : rays['inds'],
-            'total_inds': rays['total_inds'],
             'poses': poses,
             'intrinsics': self.intrinsics
         }

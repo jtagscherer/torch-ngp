@@ -153,14 +153,8 @@ def get_rays(poses, intrinsics, H, W, N=-1, error_map=None, random_patches=False
                 inds = inds.expand([B, inds.size(0)])
                 inds = inds.to(device)
 
-                # Save all inds for depth aware style transfer
-                results['total_inds'] = total_inds
-
         i = torch.gather(i, -1, inds)
         j = torch.gather(j, -1, inds)
-
-        i_tot = torch.gather(i, -1, total_inds)
-        j_tot = torch.gather(j, -1, total_inds)
 
         results['inds'] = inds
 
@@ -168,27 +162,17 @@ def get_rays(poses, intrinsics, H, W, N=-1, error_map=None, random_patches=False
         inds = torch.arange(H * W, device=device).expand([B, H * W])
 
     zs = torch.ones_like(i)
-    zs_tot = torch.ones_like(i_tot)
     xs = (i - cx) / fx * zs
-    xs_tot = (i_tot - cx) / fx * zs_tot
     ys = (j - cy) / fy * zs
-    ys_tot = (j_tot - cy) / fy * zs_tot
     directions = torch.stack((xs, ys, zs), dim=-1)
-    directions_tot = torch.stack((xs_tot, ys_tot, zs_tot), dim=-1)
     directions = directions / torch.norm(directions, dim=-1, keepdim=True)
-    directions_tot = directions_tot / torch.norm(directions_tot, dim=-1, keepdim=True)
     rays_d = directions @ poses[:, :3, :3].transpose(-1, -2)  # (B, N, 3)
-    rays_d_tot = directions_tot @ poses[:, :3, :3].transpose(-1, -2)  # (B, N, 3)
 
     rays_o = poses[..., :3, 3]  # [B, 3]
-    rays_o_tot = poses[..., :3, 3]  # [B, 3]
     rays_o = rays_o[..., None, :].expand_as(rays_d)  # [B, N, 3]
-    rays_o_tot = rays_o_tot[..., None, :].expand_as(rays_d_tot)  # [B, N, 3]
 
     results['rays_o'] = rays_o
-    results['rays_o_tot'] = rays_o_tot
     results['rays_d'] = rays_d
-    results['rays_d_tot'] = rays_d_tot
 
     return results
 
