@@ -91,6 +91,7 @@ def resample_rays(prediction_depth, depth_layers=4, patch_H=67, patch_W=81, H=10
                 not_sampled[total_patches==random_patch] = False
                 if not (True in not_sampled[depthmap==random_layer]):
                     not_sampled[depthmap==random_layer] = True
+    inds,_ = torch.sort(inds)
     return inds
 
 
@@ -153,6 +154,9 @@ def get_rays(poses, intrinsics, H, W, N=-1, error_map=None, random_patches=False
                     :patch_W].reshape(-1)
                 inds = inds.expand([B, inds.size(0)])
                 inds = inds.to(device)
+        else:
+            inds = inds.expand([B, inds.size(0)])
+            inds = inds.to(device)
 
         i = torch.gather(i, -1, inds)
         j = torch.gather(j, -1, inds)
