@@ -23,6 +23,7 @@ import torch.optim as optim
 import torch.nn.functional as F
 import torch.distributed as dist
 from torch.utils.data import Dataset, DataLoader
+from torch.distributions.categorical import Categorical
 
 import trimesh
 import mcubes
@@ -52,9 +53,49 @@ def custom_meshgrid(*args):
     else:
         return torch.meshgrid(*args, indexing='ij')
 
+def resample_rays(prediction_depth, depth_layers=4, patch_H=67, patch_W=81, H=1080, W=1920):
+    prediction_depth = prediction_depth.reshape(patch_H,patch_W)
+    max_depth = torch.max(prediction_depth)
+    min_depth = torch.min(prediction_depth)
+    step_size = (max_depth-min_depth)//depth_layers
+    depthmap = torch.ones_like(prediction_depth)
+    for i in range(depth_layers):
+        depthmap[(prediction_depth>=(min_depth+i*step_size))&(prediction_depth<(min_depth+(i+1)*step_size))] = i
+    depthmap[(prediction_depth>=(min_depth+(depth_layers-1)*step_size))] = depth_layers-1
+
+    total_patches = torch.arange(patch_H*patch_W).reshape(patch_H,patch_W)
+    not_sampled = torch.ones_like(prediction_depth)
+    not_sampled = not_sampled.type(torch.bool)
+
+    dist = Categorical(torch.tensor([0.078125,0.140625,0.265625,0.515625]))
+
+    total_inds = torch.arange(H*W).reshape(H,W)
+    region_H = H//patch_H
+    region_W = W//patch_W
+    inds = torch.tensor([])
+    for pixel in range(patch_H*patch_W):
+        ind_found = False
+        while not ind_found:
+            random_layer = dist.sample()
+            possible_patches = total_patches[(depthmap==random_layer)&not_sampled]
+            random_patch = possible_patches[torch.randint(possible_patches.size(0))]
+            offset_W = random_patch%patch_W
+            offset_H = random_patch//patch_W
+            possible_inds = total_inds[offset_H*region_H:offset_H*region_H+region_H,offset_W*region_W:offset_W*region_W+region_W].reshape(-1)
+            random_ind = possible_inds[torch.randint(possible_inds.size(0))]
+            if random_ind in inds:
+                break
+            else:
+                inds = torch.cat(inds,torch.tensor([random_ind]),0)
+                ind_found = True
+                not_sampled[total_patches==random_patch] = False
+                if not (True in not_sampled[depthmap==random_layer]):
+                    not_sampled[depthmap==random_layer] = True
+    return inds
+
 
 @torch.cuda.amp.autocast(enabled=False)
-def get_rays(poses, intrinsics, H, W, N=-1, error_map=None, random_patches=False):
+def get_rays(poses, intrinsics, H, W, N=-1, error_map=None, random_patches=False, inds = None):
     ''' get rays
     Args:
         poses: [B, 4, 4], cam2world
@@ -78,41 +119,48 @@ def get_rays(poses, intrinsics, H, W, N=-1, error_map=None, random_patches=False
 
     if N > 0:
         N = min(N, H * W)
-        if not random_patches:
-            if error_map is None:
-                inds = torch.randint(0, H * W, size=[N], device=device)  # may duplicate
-                inds = inds.expand([B, N])
+        total_inds = torch.arange(H * W).reshape(H, W)
+        if inds == None:
+            if not random_patches:
+                if error_map is None:
+                    inds = torch.randint(0, H * W, size=[N], device=device)  # may duplicate
+                    inds = inds.expand([B, N])
+                else:
+                    # weighted sample on a low-reso grid
+                    inds_coarse = torch.multinomial(error_map.to(device), N,
+                                                    replacement=False)  # [B, N], but in [0, 128*128)
+
+                    # map to the original resolution with random perturb.
+                    inds_x, inds_y = inds_coarse // 128, inds_coarse % 128  # `//` will throw a warning in torch 1.10... anyway.
+                    sx, sy = H / 128, W / 128
+                    inds_x = (inds_x * sx + torch.rand(B, N, device=device) * sx).long().clamp(max=H - 1)
+                    inds_y = (inds_y * sy + torch.rand(B, N, device=device) * sy).long().clamp(max=W - 1)
+                    inds = inds_x * W + inds_y
+
+                    results['inds_coarse'] = inds_coarse  # need this when updating error_map
+
             else:
-                # weighted sample on a low-reso grid
-                inds_coarse = torch.multinomial(error_map.to(device), N,
-                                                replacement=False)  # [B, N], but in [0, 128*128)
+                # Patch-wise training - Random choose one fixed pixel per region (region is random size and random position)
+                patch_H, patch_W = 67, 81
+                num_region_H, num_region_W = H // patch_H, W // patch_W  # 16, 24(Family, Francis, Horse), #8, 12(Truck, PG)
 
-                # map to the original resolution with random perturb.
-                inds_x, inds_y = inds_coarse // 128, inds_coarse % 128  # `//` will throw a warning in torch 1.10... anyway.
-                sx, sy = H / 128, W / 128
-                inds_x = (inds_x * sx + torch.rand(B, N, device=device) * sx).long().clamp(max=H - 1)
-                inds_y = (inds_y * sy + torch.rand(B, N, device=device) * sy).long().clamp(max=W - 1)
-                inds = inds_x * W + inds_y
+                region_size_v = np.random.randint(num_region_H // 2, num_region_H + 1)
+                region_size_u = np.random.randint(num_region_W // 3, num_region_W + 1)
+                region_position_v = np.random.randint(H - patch_H * region_size_v + region_size_v)
+                region_position_u = np.random.randint(W - patch_W * region_size_u + region_size_u)
+                inds = total_inds[region_position_v::region_size_v][:patch_H][:, region_position_u::region_size_u][:,
+                    :patch_W].reshape(-1)
+                inds = inds.expand([B, inds.size(0)])
+                inds = inds.to(device)
 
-                results['inds_coarse'] = inds_coarse  # need this when updating error_map
-
-        else:
-            # Patch-wise training - Random choose one fixed pixel per region (region is random size and random position)
-            total_inds = torch.arange(H * W).reshape(H, W)
-            patch_H, patch_W = 67, 81
-            num_region_H, num_region_W = H // patch_H, W // patch_W  # 16, 24(Family, Francis, Horse), #8, 12(Truck, PG)
-
-            region_size_v = np.random.randint(num_region_H // 2, num_region_H + 1)
-            region_size_u = np.random.randint(num_region_W // 3, num_region_W + 1)
-            region_position_v = np.random.randint(H - patch_H * region_size_v + region_size_v)
-            region_position_u = np.random.randint(W - patch_W * region_size_u + region_size_u)
-            inds = total_inds[region_position_v::region_size_v][:patch_H][:, region_position_u::region_size_u][:,
-                   :patch_W].reshape(-1)
-            inds = inds.expand([B, inds.size(0)])
-            inds = inds.to(device)
+                # Save all inds for depth aware style transfer
+                results['total_inds'] = total_inds
 
         i = torch.gather(i, -1, inds)
         j = torch.gather(j, -1, inds)
+
+        i_tot = torch.gather(i, -1, total_inds)
+        j_tot = torch.gather(j, -1, total_inds)
 
         results['inds'] = inds
 
@@ -120,17 +168,27 @@ def get_rays(poses, intrinsics, H, W, N=-1, error_map=None, random_patches=False
         inds = torch.arange(H * W, device=device).expand([B, H * W])
 
     zs = torch.ones_like(i)
+    zs_tot = torch.ones_like(i_tot)
     xs = (i - cx) / fx * zs
+    xs_tot = (i_tot - cx) / fx * zs_tot
     ys = (j - cy) / fy * zs
+    ys_tot = (j_tot - cy) / fy * zs_tot
     directions = torch.stack((xs, ys, zs), dim=-1)
+    directions_tot = torch.stack((xs_tot, ys_tot, zs_tot), dim=-1)
     directions = directions / torch.norm(directions, dim=-1, keepdim=True)
+    directions_tot = directions_tot / torch.norm(directions_tot, dim=-1, keepdim=True)
     rays_d = directions @ poses[:, :3, :3].transpose(-1, -2)  # (B, N, 3)
+    rays_d_tot = directions_tot @ poses[:, :3, :3].transpose(-1, -2)  # (B, N, 3)
 
     rays_o = poses[..., :3, 3]  # [B, 3]
+    rays_o_tot = poses[..., :3, 3]  # [B, 3]
     rays_o = rays_o[..., None, :].expand_as(rays_d)  # [B, N, 3]
+    rays_o_tot = rays_o_tot[..., None, :].expand_as(rays_d_tot)  # [B, N, 3]
 
     results['rays_o'] = rays_o
+    results['rays_o_tot'] = rays_o_tot
     results['rays_d'] = rays_d
+    results['rays_d_tot'] = rays_d_tot
 
     return results
 
@@ -435,10 +493,16 @@ class Trainer(object):
                 outputs = self.model.render(rays_o, rays_d, staged=False, bg_color=None, perturb=True, force_all_rays=True,
                                             **vars(self.opt))
 
-                prediction = outputs['image']
-                prediction_depth = outputs['depth']
+                prediction_depth = outputs['depth'].detach()
+                inds = resample_rays(prediction_depth, H=data['H'], W=data['W'])
+                rays = get_rays(data['poses'],data['intrinsics'],data['H'],data['W'],67*81,random_patches=True,inds=inds)
 
-                '''if self.global_step < style_training_start_step + 100:
+                rays_o = rays['rays_o']  # [B, N, 3]
+                rays_d = rays['rays_d']  # [B, N, 3]
+
+                gt_rgb = torch.gather(data['total_images'].view(B, -1, 3), 1, torch.stack(C * [rays['inds']], -1)) # [B, N, 3/4]
+
+                if self.global_step < style_training_start_step + 10:
                     # Render predictions and depth maps
                     pred_image = prediction.detach()
                     pred_image = pred_image.reshape(67, 81, 3).permute(2, 0, 1).contiguous()
@@ -447,7 +511,11 @@ class Trainer(object):
                     torch_vis_2d(pred_image)
                     plt.savefig(f'/tmp/nerfout/{self.global_step}_pred.png')
                     torch_vis_2d(depth_image)
-                    plt.savefig(f'/tmp/nerfout/{self.global_step}_depth.png')'''
+                    plt.savefig(f'/tmp/nerfout/{self.global_step}_depth.png')
+
+                outputs = self.model.render(rays_o, rays_d, staged=False, bg_color=None, perturb=True, force_all_rays=True,
+                                            **vars(self.opt))
+                prediction = outputs['image']
 
                 ground_truth = gt_rgb
 

@@ -280,6 +280,12 @@ class NeRFDataset:
             'W': self.W,
             'rays_o': rays['rays_o'],
             'rays_d': rays['rays_d'],
+            'rays_o_tot': rays['rays_o_tot'],
+            'rays_d_tot': rays['rays_d_tot'],
+            'inds' : rays['inds'],
+            'total_inds': rays['total_inds'],
+            'poses': poses,
+            'intrinsics': self.intrinsics
         }
 
         if self.images is not None:
@@ -287,7 +293,9 @@ class NeRFDataset:
             if self.training:
                 C = images.shape[-1]
                 images = torch.gather(images.view(B, -1, C), 1, torch.stack(C * [rays['inds']], -1)) # [B, N, 3/4]
+                total_images =torch.gather(images.view(B, -1, C), 1, torch.stack(C * [rays['total_inds']], -1)) # [B, N, 3/4]
             results['images'] = images
+            results['total_images'] = total_images
         
         # need inds to update error_map
         if error_map is not None:
