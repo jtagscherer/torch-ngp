@@ -117,9 +117,10 @@ def get_rays(poses, intrinsics, H, W, N=-1, error_map=None, random_patches=False
 
     results = {}
 
+    total_inds = torch.arange(H * W).reshape(H, W)
+
     if N > 0:
         N = min(N, H * W)
-        total_inds = torch.arange(H * W).reshape(H, W)
         if inds == None:
             if not random_patches:
                 if error_map is None:
@@ -153,9 +154,6 @@ def get_rays(poses, intrinsics, H, W, N=-1, error_map=None, random_patches=False
                 inds = inds.expand([B, inds.size(0)])
                 inds = inds.to(device)
 
-                # Save all inds for depth aware style transfer
-                results['total_inds'] = total_inds
-
         i = torch.gather(i, -1, inds)
         j = torch.gather(j, -1, inds)
 
@@ -163,6 +161,9 @@ def get_rays(poses, intrinsics, H, W, N=-1, error_map=None, random_patches=False
 
     else:
         inds = torch.arange(H * W, device=device).expand([B, H * W])
+    
+    # Save all inds for depth aware style transfer
+    results['total_inds'] = total_inds
 
     zs = torch.ones_like(i)
     xs = (i - cx) / fx * zs
