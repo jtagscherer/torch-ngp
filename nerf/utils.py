@@ -471,7 +471,7 @@ class Trainer(object):
                                :].reshape(-1)
                 gt_rgb = ground_truth
 
-                if self.global_step < style_training_start_step + 100:
+                '''if self.global_step < style_training_start_step + 100:
                     # Render predictions and depth maps
                     print(
                         f'{self.global_step}: Average depth: {average_depth}, Resolution: {resolution} ({prediction_width} x {prediction_height})')
@@ -489,7 +489,7 @@ class Trainer(object):
                     torch_vis_2d(depth_image)
                     plt.savefig(f'/tmp/nerfout/{self.global_step}_depth.png')
                     torch_vis_2d(gt_image)
-                    plt.savefig(f'/tmp/nerfout/{self.global_step}_gt.png')
+                    plt.savefig(f'/tmp/nerfout/{self.global_step}_gt.png')'''
 
                 content_feat = self.style_model.get_content_feat(
                     ground_truth.reshape(prediction_height, prediction_width, 3).permute(2, 0,
