@@ -54,7 +54,7 @@ def custom_meshgrid(*args):
 
 
 @torch.cuda.amp.autocast(enabled=False)
-def get_rays(poses, intrinsics, H, W, N=-1, error_map=None, random_patches=False, ray_resolution_reduction=None):
+def get_rays(poses, intrinsics, H, W, N=-1, error_map=None, random_patches=False, ray_resolution=None):
     ''' get rays
     Args:
         poses: [B, 4, 4], cam2world
@@ -109,8 +109,8 @@ def get_rays(poses, intrinsics, H, W, N=-1, error_map=None, random_patches=False
             inds = total_inds[region_position_v::region_size_v][:patch_H][:, region_position_u::region_size_u][:,
                    :patch_W].reshape(-1)
 
-            if ray_resolution_reduction is not None:
-                inx = np.array([i for i in range(len(a)) if i % ray_resolution_reduction != 0])
+            if ray_resolution is not None:
+                inx = np.array([i for i in range(len(a)) if i % ray_resolution != 0])
                 inds = inds[inx]
 
             inds = inds.expand([B, inds.size(0)])
@@ -437,12 +437,19 @@ class Trainer(object):
                 outputs = self.model.render(rays_o, rays_d, staged=False, bg_color=None, perturb=True, force_all_rays=True,
                                             **vars(self.opt))
 
-                prediction = outputs['image']
                 prediction_depth = outputs['depth'].detach()
 
                 average_depth = torch.mean(prediction_depth)
+                resolution = int(torch.pow(average_depth, 2) * 50)
 
-                # TODO: Throw away rays depending on average depth
+                rays = get_rays(data['poses'], data['intrinsics'], data['H'], data['W'], 67 * 81, random_patches=True, ray_resolution=resolution)
+                rays_o = rays['rays_o']  # [B, N, 3]
+                rays_d = rays['rays_d']  # [B, N, 3]
+                outputs = self.model.render(rays_o, rays_d, staged=False, bg_color=None, perturb=True, force_all_rays=True,
+                                            **vars(self.opt))
+
+                prediction = outputs['image']
+                prediction_depth = outputs['depth']
 
                 if self.global_step < style_training_start_step + 100:
                     # Render predictions and depth maps
@@ -454,7 +461,7 @@ class Trainer(object):
                     plt.savefig(f'/tmp/nerfout/{self.global_step}_pred.png')
                     torch_vis_2d(depth_image)
                     plt.savefig(f'/tmp/nerfout/{self.global_step}_depth.png')
-                    print(f'{self.global_step}: Average depth: {average_depth}')
+                    print(f'{self.global_step}: Average depth: {average_depth}, Resolution: {resolution}')
 
                 ground_truth = gt_rgb
 
