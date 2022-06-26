@@ -448,7 +448,7 @@ class Trainer(object):
                 prediction_depth = outputs['depth'].detach()
 
                 average_depth = torch.mean(prediction_depth)
-                resolution = int(torch.pow(average_depth, 2) * 50)
+                resolution = max(2, int(torch.pow(average_depth, 2) * 50))
 
                 rays = get_rays(data['poses'], data['intrinsics'], data['H'], data['W'], 67 * 81, random_patches=True,
                                 ray_resolution=resolution)
@@ -464,6 +464,13 @@ class Trainer(object):
                 prediction_width = rays['inds_width']
                 prediction_height = rays['inds_height']
 
+                inx_w = np.array([i for i in range(81) if i % resolution != 0])
+                inx_h = np.array([i for i in range(67)])
+                ground_truth = gt_rgb
+                ground_truth = ground_truth.reshape(67, 81, 3)[np.repeat(inx_h, len(inx_w)), np.tile(inx_w, len(inx_h)),
+                               :].reshape(-1)
+                gt_rgb = ground_truth
+
                 if self.global_step < style_training_start_step + 100:
                     # Render predictions and depth maps
                     print(
@@ -474,15 +481,15 @@ class Trainer(object):
                     depth_image = prediction_depth.detach()
                     depth_image = depth_image.reshape(prediction_height, prediction_width, 1).permute(2, 0,
                                                                                                       1).contiguous()
+                    gt_image = gt_rgb.detach()
+                    gt_image = gt_image.reshape(prediction_height, prediction_width, 3).permute(2, 0,
+                                                                                                1).contiguous()
                     torch_vis_2d(pred_image)
                     plt.savefig(f'/tmp/nerfout/{self.global_step}_pred.png')
                     torch_vis_2d(depth_image)
                     plt.savefig(f'/tmp/nerfout/{self.global_step}_depth.png')
-
-                ground_truth = gt_rgb
-                inx_w = np.array([i for i in range(81) if i % resolution != 0])
-                inx_h = np.array([i for i in range(67)])
-                gt_rgb = gt_rgb[np.repeat(inx_h, len(inx_w)), np.tile(inx_w, len(inx_h))]
+                    torch_vis_2d(gt_image)
+                    plt.savefig(f'/tmp/nerfout/{self.global_step}_gt.png')
 
                 content_feat = self.style_model.get_content_feat(
                     ground_truth.reshape(prediction_height, prediction_width, 3).permute(2, 0,
@@ -497,11 +504,11 @@ class Trainer(object):
                 style_feats, style_feat_mean_std = self.style_model.get_style_feat(self.style_image.cuda().unsqueeze(0))
 
                 content_loss = get_content_loss(content_feat, output_content_feat)
-                nerf_loss = self.criterion(prediction, ground_truth).mean()
+                # nerf_loss = self.criterion(prediction, ground_truth).mean()
                 style_loss = get_style_loss(style_feat_mean_std, output_style_feat_mean_std)
 
                 if self.global_step <= style_training_start_step + 1500:
-                    loss = content_loss + nerf_loss
+                    loss = content_loss  # + nerf_loss
                 else:
                     loss = content_loss + style_loss
 
