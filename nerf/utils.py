@@ -425,7 +425,7 @@ class Trainer(object):
             bg_color = None
             gt_rgb = images
 
-        style_training_start_step = 5000
+        style_training_start_step = 1000 # = 5000
 
         #if self.global_step == style_training_start_step:
         enablePatchSampling(True)
