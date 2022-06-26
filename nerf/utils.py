@@ -54,7 +54,7 @@ def custom_meshgrid(*args):
 
 
 @torch.cuda.amp.autocast(enabled=False)
-def get_rays(poses, intrinsics, H, W, N=-1, error_map=None, random_patches=False):
+def get_rays(poses, intrinsics, H, W, N=-1, error_map=None, random_patches=False, ray_resolution_reduction=None):
     ''' get rays
     Args:
         poses: [B, 4, 4], cam2world
@@ -108,6 +108,11 @@ def get_rays(poses, intrinsics, H, W, N=-1, error_map=None, random_patches=False
             region_position_u = np.random.randint(W - patch_W * region_size_u + region_size_u)
             inds = total_inds[region_position_v::region_size_v][:patch_H][:, region_position_u::region_size_u][:,
                    :patch_W].reshape(-1)
+
+            if ray_resolution_reduction is not None:
+                inx = np.array([i for i in range(len(a)) if i % ray_resolution_reduction != 0])
+                inds = inds[inx]
+
             inds = inds.expand([B, inds.size(0)])
             inds = inds.to(device)
 
@@ -429,14 +434,16 @@ class Trainer(object):
                 self.optimizer = optim.Adam(self.model.parameters(), lr=0.0005)
 
             if 'images' in data:
-                # Render patch and get corresponding ground truth image
-                #prediction = self.model.render(rays_o, rays_d, staged=False, bg_color=None, perturb=True, force_all_rays=True,
-                #                               **vars(self.opt))['image']
                 outputs = self.model.render(rays_o, rays_d, staged=False, bg_color=None, perturb=True, force_all_rays=True,
                                             **vars(self.opt))
 
                 prediction = outputs['image']
-                prediction_depth = outputs['depth']
+                prediction_depth = outputs['depth'].detach()
+
+                average_depth = torch.mean(prediction_depth)
+                print(f'Average depth: {average_depth}')
+
+                # TODO: Throw away rays depending on average depth
 
                 '''if self.global_step < style_training_start_step + 100:
                     # Render predictions and depth maps
