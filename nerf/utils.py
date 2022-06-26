@@ -110,7 +110,7 @@ def get_rays(poses, intrinsics, H, W, N=-1, error_map=None, random_patches=False
                    :patch_W].reshape(-1)
 
             if ray_resolution is not None:
-                inx = np.array([i for i in range(len(a)) if i % ray_resolution != 0])
+                inx = np.array([i for i in range(len(inds)) if i % ray_resolution != 0])
                 inds = inds[inx]
 
             inds = inds.expand([B, inds.size(0)])
