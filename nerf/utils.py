@@ -110,8 +110,8 @@ def get_rays(poses, intrinsics, H, W, N=-1, error_map=None, random_patches=False
                    :patch_W]
 
             if ray_resolution is not None:
-                inx_w = np.array([i for i in range(len(81)) if i % ray_resolution != 0])
-                inx_h = np.array([i for i in range(len(67))])
+                inx_w = np.array([i for i in range(81) if i % ray_resolution != 0])
+                inx_h = np.array([i for i in range(67)])
                 inds = inds[inx_h][inx_w]
                 results['inds_width'] = len(inx_w)
                 results['inds_height'] = len(inx_h)
