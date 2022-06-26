@@ -107,12 +107,16 @@ def get_rays(poses, intrinsics, H, W, N=-1, error_map=None, random_patches=False
             region_position_v = np.random.randint(H - patch_H * region_size_v + region_size_v)
             region_position_u = np.random.randint(W - patch_W * region_size_u + region_size_u)
             inds = total_inds[region_position_v::region_size_v][:patch_H][:, region_position_u::region_size_u][:,
-                   :patch_W].reshape(-1)
+                   :patch_W]
 
             if ray_resolution is not None:
-                inx = np.array([i for i in range(len(inds)) if i % ray_resolution != 0])
-                inds = inds[inx]
+                inx_w = np.array([i for i in range(len(81)) if i % ray_resolution != 0])
+                inx_h = np.array([i for i in range(len(67))])
+                inds = inds[inx_h][inx_w]
+                results['inds_width'] = len(inx_w)
+                results['inds_height'] = len(inx_h)
 
+            inds = inds.reshape(-1)
             inds = inds.expand([B, inds.size(0)])
             inds = inds.to(device)
 
@@ -451,27 +455,30 @@ class Trainer(object):
                 prediction = outputs['image']
                 prediction_depth = outputs['depth']
 
+                prediction_width = rays['inds_width']
+                prediction_height = rays['inds_height']
+
                 if self.global_step < style_training_start_step + 100:
                     # Render predictions and depth maps
+                    print(f'{self.global_step}: Average depth: {average_depth}, Resolution: {resolution} ({prediction_width} x {prediction_height})')
                     pred_image = prediction.detach()
-                    pred_image = pred_image.reshape(67, 81, 3).permute(2, 0, 1).contiguous()
+                    pred_image = pred_image.reshape(prediction_height, prediction_width, 3).permute(2, 0, 1).contiguous()
                     depth_image = prediction_depth.detach()
-                    depth_image = depth_image.reshape(67, 81, 1).permute(2, 0, 1).contiguous()
+                    depth_image = depth_image.reshape(prediction_height, prediction_width, 1).permute(2, 0, 1).contiguous()
                     torch_vis_2d(pred_image)
                     plt.savefig(f'/tmp/nerfout/{self.global_step}_pred.png')
                     torch_vis_2d(depth_image)
                     plt.savefig(f'/tmp/nerfout/{self.global_step}_depth.png')
-                    print(f'{self.global_step}: Average depth: {average_depth}, Resolution: {resolution}')
 
                 ground_truth = gt_rgb
 
                 content_feat = self.style_model.get_content_feat(
-                    ground_truth.reshape(67, 81, 3).permute(2,0,1).contiguous().unsqueeze(0))
+                    ground_truth.reshape(prediction_height, prediction_width, 3).permute(2,0,1).contiguous().unsqueeze(0))
                 output_content_feat = self.style_model.get_content_feat(
-                    prediction.reshape(67, 81, 3).permute(2,0,1).contiguous().unsqueeze(0))
+                    prediction.reshape(prediction_height, prediction_width, 3).permute(2,0,1).contiguous().unsqueeze(0))
 
                 output_style_feats, output_style_feat_mean_std = self.style_model.get_style_feat(
-                    prediction.reshape(67, 81, 3).permute(2,0,1).contiguous().unsqueeze(0))
+                    prediction.reshape(prediction_height, prediction_width, 3).permute(2,0,1).contiguous().unsqueeze(0))
                 style_feats, style_feat_mean_std = self.style_model.get_style_feat(self.style_image.cuda().unsqueeze(0))
 
                 content_loss = get_content_loss(content_feat, output_content_feat)
