@@ -441,11 +441,10 @@ class Trainer(object):
                 prediction_depth = outputs['depth'].detach()
 
                 average_depth = torch.mean(prediction_depth)
-                print(f'Average depth: {average_depth}')
 
                 # TODO: Throw away rays depending on average depth
 
-                '''if self.global_step < style_training_start_step + 100:
+                if self.global_step < style_training_start_step + 100:
                     # Render predictions and depth maps
                     pred_image = prediction.detach()
                     pred_image = pred_image.reshape(67, 81, 3).permute(2, 0, 1).contiguous()
@@ -454,7 +453,8 @@ class Trainer(object):
                     torch_vis_2d(pred_image)
                     plt.savefig(f'/tmp/nerfout/{self.global_step}_pred.png')
                     torch_vis_2d(depth_image)
-                    plt.savefig(f'/tmp/nerfout/{self.global_step}_depth.png')'''
+                    plt.savefig(f'/tmp/nerfout/{self.global_step}_depth.png')
+                    print(f'{self.global_step}: Average depth: {average_depth}')
 
                 ground_truth = gt_rgb
 
