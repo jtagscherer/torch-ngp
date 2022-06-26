@@ -37,9 +37,11 @@ from styletransfer.utils import load_style_image, get_content_loss, get_style_lo
 
 patch_sampling = False
 
+
 def enablePatchSampling(enable):
     global patch_sampling
     patch_sampling = enable
+
 
 def getPatchSampling():
     return patch_sampling
@@ -110,9 +112,10 @@ def get_rays(poses, intrinsics, H, W, N=-1, error_map=None, random_patches=False
                    :patch_W]
 
             if ray_resolution is not None:
-                inx_w = np.array([i for i in range(81 - 1) if i % ray_resolution != 0])
-                inx_h = np.array([i for i in range(67 - 1)])
-                inds = inds[:][inx_w]
+                inx_w = np.array([i for i in range(81) if i % ray_resolution != 0])
+                inx_h = np.array([i for i in range(67)])
+                inx = np.flip(np.transpose([np.tile(inx_w, len(inx_h)), np.repeat(inx_h, len(inx_w))]), 1)
+                inds = inds[np.repeat(inx_h, len(inx_w)), np.tile(inx_w, len(inx_h))]
                 results['inds_width'] = len(inx_w)
                 results['inds_height'] = len(inx_h)
 
@@ -404,7 +407,7 @@ class Trainer(object):
                 print(*args, file=self.log_ptr)
                 self.log_ptr.flush()  # write immediately to file
 
-    ### ------------------------------	
+    ### ------------------------------
 
     def train_step(self, data, patch_data=None):
 
@@ -425,9 +428,9 @@ class Trainer(object):
             bg_color = None
             gt_rgb = images
 
-        style_training_start_step = 1000 # = 5000
+        style_training_start_step = 1000  # = 5000
 
-        #if self.global_step == style_training_start_step:
+        # if self.global_step == style_training_start_step:
         enablePatchSampling(True)
 
         if self.global_step > style_training_start_step:
@@ -438,7 +441,8 @@ class Trainer(object):
                 self.optimizer = optim.Adam(self.model.parameters(), lr=0.0005)
 
             if 'images' in data:
-                outputs = self.model.render(rays_o, rays_d, staged=False, bg_color=None, perturb=True, force_all_rays=True,
+                outputs = self.model.render(rays_o, rays_d, staged=False, bg_color=None, perturb=True,
+                                            force_all_rays=True,
                                             **vars(self.opt))
 
                 prediction_depth = outputs['depth'].detach()
@@ -446,10 +450,12 @@ class Trainer(object):
                 average_depth = torch.mean(prediction_depth)
                 resolution = int(torch.pow(average_depth, 2) * 50)
 
-                rays = get_rays(data['poses'], data['intrinsics'], data['H'], data['W'], 67 * 81, random_patches=True, ray_resolution=resolution)
+                rays = get_rays(data['poses'], data['intrinsics'], data['H'], data['W'], 67 * 81, random_patches=True,
+                                ray_resolution=resolution)
                 rays_o = rays['rays_o']  # [B, N, 3]
                 rays_d = rays['rays_d']  # [B, N, 3]
-                outputs = self.model.render(rays_o, rays_d, staged=False, bg_color=None, perturb=True, force_all_rays=True,
+                outputs = self.model.render(rays_o, rays_d, staged=False, bg_color=None, perturb=True,
+                                            force_all_rays=True,
                                             **vars(self.opt))
 
                 prediction = outputs['image']
@@ -460,25 +466,34 @@ class Trainer(object):
 
                 if self.global_step < style_training_start_step + 100:
                     # Render predictions and depth maps
-                    print(f'{self.global_step}: Average depth: {average_depth}, Resolution: {resolution} ({prediction_width} x {prediction_height})')
+                    print(
+                        f'{self.global_step}: Average depth: {average_depth}, Resolution: {resolution} ({prediction_width} x {prediction_height})')
                     pred_image = prediction.detach()
-                    pred_image = pred_image.reshape(prediction_height, prediction_width, 3).permute(2, 0, 1).contiguous()
+                    pred_image = pred_image.reshape(prediction_height, prediction_width, 3).permute(2, 0,
+                                                                                                    1).contiguous()
                     depth_image = prediction_depth.detach()
-                    depth_image = depth_image.reshape(prediction_height, prediction_width, 1).permute(2, 0, 1).contiguous()
+                    depth_image = depth_image.reshape(prediction_height, prediction_width, 1).permute(2, 0,
+                                                                                                      1).contiguous()
                     torch_vis_2d(pred_image)
                     plt.savefig(f'/tmp/nerfout/{self.global_step}_pred.png')
                     torch_vis_2d(depth_image)
                     plt.savefig(f'/tmp/nerfout/{self.global_step}_depth.png')
 
                 ground_truth = gt_rgb
+                inx_w = np.array([i for i in range(81) if i % resolution != 0])
+                inx_h = np.array([i for i in range(67)])
+                gt_rgb = gt_rgb[np.repeat(inx_h, len(inx_w)), np.tile(inx_w, len(inx_h))]
 
                 content_feat = self.style_model.get_content_feat(
-                    ground_truth.reshape(prediction_height, prediction_width, 3).permute(2,0,1).contiguous().unsqueeze(0))
+                    ground_truth.reshape(prediction_height, prediction_width, 3).permute(2, 0,
+                                                                                         1).contiguous().unsqueeze(0))
                 output_content_feat = self.style_model.get_content_feat(
-                    prediction.reshape(prediction_height, prediction_width, 3).permute(2,0,1).contiguous().unsqueeze(0))
+                    prediction.reshape(prediction_height, prediction_width, 3).permute(2, 0, 1).contiguous().unsqueeze(
+                        0))
 
                 output_style_feats, output_style_feat_mean_std = self.style_model.get_style_feat(
-                    prediction.reshape(prediction_height, prediction_width, 3).permute(2,0,1).contiguous().unsqueeze(0))
+                    prediction.reshape(prediction_height, prediction_width, 3).permute(2, 0, 1).contiguous().unsqueeze(
+                        0))
                 style_feats, style_feat_mean_std = self.style_model.get_style_feat(self.style_image.cuda().unsqueeze(0))
 
                 content_loss = get_content_loss(content_feat, output_content_feat)
@@ -489,8 +504,8 @@ class Trainer(object):
                     loss = content_loss + nerf_loss
                 else:
                     loss = content_loss + style_loss
-                
-                if self.global_step%2000==0:
+
+                if self.global_step % 2000 == 0:
                     print(f'Content Loss: {content_loss}')
                     print(f'Style Loss: {style_loss}')
                     print(f'NeRF Loss: {nerf_loss}')
@@ -546,20 +561,21 @@ class Trainer(object):
 
         if patch_data is not None:
             style_prediction = \
-            self.model.render(patch_data['rays_o'], patch_data['rays_d'], staged=False, bg_color=None, perturb=True, force_all_rays=True,
-                              **vars(self.opt))['image']
+                self.model.render(patch_data['rays_o'], patch_data['rays_d'], staged=False, bg_color=None, perturb=True,
+                                  force_all_rays=True,
+                                  **vars(self.opt))['image']
             ground_truth = patch_data['images']
             output_style_feats, output_style_feat_mean_std = self.style_model.get_style_feat(
                 style_prediction.reshape(67, 81, 3).permute(2, 0, 1).contiguous().unsqueeze(0))
             style_feats, style_feat_mean_std = self.style_model.get_style_feat(self.style_image.cuda().unsqueeze(0))
 
             content_feat = self.style_model.get_content_feat(
-                    ground_truth.reshape(67, 81, 3).permute(2,0,1).contiguous().unsqueeze(0))
+                ground_truth.reshape(67, 81, 3).permute(2, 0, 1).contiguous().unsqueeze(0))
             output_content_feat = self.style_model.get_content_feat(
-                    style_prediction.reshape(67, 81, 3).permute(2,0,1).contiguous().unsqueeze(0))
+                style_prediction.reshape(67, 81, 3).permute(2, 0, 1).contiguous().unsqueeze(0))
             style_loss = get_style_loss(style_feat_mean_std, output_style_feat_mean_std)
             content_loss = get_content_loss(content_feat, output_content_feat)
-            loss = content_loss+0.01*style_loss
+            loss = content_loss + 0.01 * style_loss
 
         loss = loss.mean()
 
@@ -1046,7 +1062,7 @@ class Trainer(object):
                     self.log(f"[INFO] New best result: {self.stats['best_result']} --> {self.stats['results'][-1]}")
                     self.stats["best_result"] = self.stats["results"][-1]
 
-                    # save ema results 
+                    # save ema results
                     if self.ema is not None:
                         self.ema.store()
                         self.ema.copy_to()
