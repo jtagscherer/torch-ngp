@@ -56,7 +56,8 @@ def custom_meshgrid(*args):
 
 
 @torch.cuda.amp.autocast(enabled=False)
-def get_rays(poses, intrinsics, H, W, N=-1, error_map=None, random_patches=False, ray_resolution=None):
+def get_rays(poses, intrinsics, H, W, N=-1, error_map=None, random_patches=False, ray_resolution=None,
+             previous_inds=None):
     ''' get rays
     Args:
         poses: [B, 4, 4], cam2world
@@ -104,20 +105,23 @@ def get_rays(poses, intrinsics, H, W, N=-1, error_map=None, random_patches=False
             patch_H, patch_W = 67, 81
             num_region_H, num_region_W = H // patch_H, W // patch_W  # 16, 24(Family, Francis, Horse), #8, 12(Truck, PG)
 
-            region_size_v = np.random.randint(num_region_H // 2, num_region_H + 1)
-            region_size_u = np.random.randint(num_region_W // 3, num_region_W + 1)
-            region_position_v = np.random.randint(H - patch_H * region_size_v + region_size_v)
-            region_position_u = np.random.randint(W - patch_W * region_size_u + region_size_u)
-            inds = total_inds[region_position_v::region_size_v][:patch_H][:, region_position_u::region_size_u][:,
+            if previous_inds is not None:
+                inds = previous_inds
+            else:
+                region_size_v = np.random.randint(num_region_H // 2, num_region_H + 1)
+                region_size_u = np.random.randint(num_region_W // 3, num_region_W + 1)
+                region_position_v = np.random.randint(H - patch_H * region_size_v + region_size_v)
+                region_position_u = np.random.randint(W - patch_W * region_size_u + region_size_u)
+                inds = total_inds[region_position_v::region_size_v][:patch_H][:, region_position_u::region_size_u][:,
                    :patch_W]
+
+            results['previous_inds'] = inds
 
             if ray_resolution is not None:
                 inx_w = np.array([i for i in range(81) if i % ray_resolution != 0])
                 inx_h = np.array([i for i in range(67) if i % ray_resolution != 0])
                 # inx = np.flip(np.transpose([np.tile(inx_w, len(inx_h)), np.repeat(inx_h, len(inx_w))]), 1)
                 inds = inds[np.repeat(inx_h, len(inx_w)), np.tile(inx_w, len(inx_h))]
-                results['inds_width'] = len(inx_w)
-                results['inds_height'] = len(inx_h)
 
             inds = inds.reshape(-1)
             inds = inds.expand([B, inds.size(0)])
@@ -140,12 +144,6 @@ def get_rays(poses, intrinsics, H, W, N=-1, error_map=None, random_patches=False
 
     rays_o = poses[..., :3, 3]  # [B, 3]
     rays_o = rays_o[..., None, :].expand_as(rays_d)  # [B, N, 3]
-
-    if ray_resolution is not None:
-        inx_w = np.array([i for i in range(81) if i % ray_resolution != 0])
-        inx_h = np.array([i for i in range(67) if i % ray_resolution != 0])
-        rays_o = inds[np.repeat(inx_h, len(inx_w)), np.tile(inx_w, len(inx_h)), :]
-        rays_d = inds[np.repeat(inx_h, len(inx_w)), np.tile(inx_w, len(inx_h)), :]
 
     results['rays_o'] = rays_o
     results['rays_d'] = rays_d
@@ -436,8 +434,8 @@ class Trainer(object):
 
         style_training_start_step = 1000
 
-        # if self.global_step == style_training_start_step:
-        enablePatchSampling(True)
+        if self.global_step == style_training_start_step:
+            enablePatchSampling(True)
 
         if self.global_step > style_training_start_step:
             # Freeze NeRF if not frozen yet
@@ -456,12 +454,17 @@ class Trainer(object):
                 average_depth = torch.mean(prediction_depth)
                 resolution = max(2, int(torch.pow(average_depth, 2) * 100))
 
+                inx_w = np.array([i for i in range(81) if i % resolution != 0])
+                inx_h = np.array([i for i in range(67) if i % resolution != 0])
+                prediction_width = len(inx_w)
+                prediction_height = len(inx_h)
+
                 # DEBUG
                 full_patch = outputs['image'].detach()
                 full_gt = gt_rgb.detach()
 
                 rays = get_rays(data['poses'], data['intrinsics'], data['H'], data['W'], 67 * 81, random_patches=True,
-                                ray_resolution=resolution)
+                                ray_resolution=resolution, previous_inds=data['previous_inds'])
                 rays_o = rays['rays_o']  # [B, N, 3]
                 rays_d = rays['rays_d']  # [B, N, 3]
                 outputs = self.model.render(rays_o, rays_d, staged=False, bg_color=None, perturb=True,
@@ -471,18 +474,14 @@ class Trainer(object):
                 prediction = outputs['image']
                 prediction_depth = outputs['depth']
 
-                prediction_width = rays['inds_width']
-                prediction_height = rays['inds_height']
-
-                inx_w = np.array([i for i in range(81) if i % resolution != 0])
-                inx_h = np.array([i for i in range(67) if i % resolution != 0])
                 ground_truth = gt_rgb
                 ground_truth = ground_truth.reshape(67, 81, 3)[np.repeat(inx_h, len(inx_w)), np.tile(inx_w, len(inx_h)),
                                :].reshape(1, prediction_width * prediction_height, 3)
                 gt_rgb = ground_truth
 
                 if self.global_step < style_training_start_step + 50:
-                    print(f'{self.global_step}: Average depth: {average_depth}, Resolution: {resolution} ({prediction_width} x {prediction_height})')
+                    print(
+                        f'{self.global_step}: Average depth: {average_depth}, Resolution: {resolution} ({prediction_width} x {prediction_height})')
                     # Render predictions and depth maps
                     pred_image = prediction.detach()
                     pred_image = pred_image.reshape(prediction_height, prediction_width, 3).permute(2, 0,
