@@ -113,8 +113,8 @@ def get_rays(poses, intrinsics, H, W, N=-1, error_map=None, random_patches=False
 
             if ray_resolution is not None:
                 inx_w = np.array([i for i in range(81) if i % ray_resolution != 0])
-                inx_h = np.array([i for i in range(67)])
-                inx = np.flip(np.transpose([np.tile(inx_w, len(inx_h)), np.repeat(inx_h, len(inx_w))]), 1)
+                inx_h = np.array([i for i in range(67) if i % ray_resolution != 0])
+                # inx = np.flip(np.transpose([np.tile(inx_w, len(inx_h)), np.repeat(inx_h, len(inx_w))]), 1)
                 inds = inds[np.repeat(inx_h, len(inx_w)), np.tile(inx_w, len(inx_h))]
                 results['inds_width'] = len(inx_w)
                 results['inds_height'] = len(inx_h)
@@ -469,7 +469,7 @@ class Trainer(object):
                 prediction_height = rays['inds_height']
 
                 inx_w = np.array([i for i in range(81) if i % resolution != 0])
-                inx_h = np.array([i for i in range(67)])
+                inx_h = np.array([i for i in range(67) if i % resolution != 0])
                 ground_truth = gt_rgb
                 ground_truth = ground_truth.reshape(67, 81, 3)[np.repeat(inx_h, len(inx_w)), np.tile(inx_w, len(inx_h)),
                                :].reshape(1, prediction_width * prediction_height, 3)
