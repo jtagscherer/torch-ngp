@@ -432,7 +432,7 @@ class Trainer(object):
             bg_color = None
             gt_rgb = images
 
-        style_training_start_step = 1000
+        style_training_start_step = 5000
 
         if self.global_step == style_training_start_step:
             enablePatchSampling(True)
@@ -452,7 +452,7 @@ class Trainer(object):
                 prediction_depth = outputs['depth'].detach()
 
                 average_depth = torch.mean(prediction_depth)
-                resolution = max(2, int(torch.pow(average_depth, 2) * 100))
+                resolution = max(2, int(torch.pow(average_depth, 2) * 200))
 
                 inx_w = np.array([i for i in range(81) if i % resolution != 0])
                 inx_h = np.array([i for i in range(67) if i % resolution != 0])
