@@ -450,6 +450,10 @@ class Trainer(object):
                 average_depth = torch.mean(prediction_depth)
                 resolution = max(2, int(torch.pow(average_depth, 2) * 100))
 
+                # DEBUG
+                full_patch = outputs['image'].detach()
+                full_gt = gt_rgb.detach()
+
                 rays = get_rays(data['poses'], data['intrinsics'], data['H'], data['W'], 67 * 81, random_patches=True,
                                 ray_resolution=resolution)
                 rays_o = rays['rays_o']  # [B, N, 3]
@@ -477,18 +481,30 @@ class Trainer(object):
                     pred_image = prediction.detach()
                     pred_image = pred_image.reshape(prediction_height, prediction_width, 3).permute(2, 0,
                                                                                                     1).contiguous()
+                    torch_vis_2d(pred_image)
+                    plt.savefig(f'/tmp/nerfout/{self.global_step}_pred.png')
+
                     depth_image = prediction_depth.detach()
                     depth_image = depth_image.reshape(prediction_height, prediction_width, 1).permute(2, 0,
                                                                                                       1).contiguous()
+                    torch_vis_2d(depth_image)
+                    plt.savefig(f'/tmp/nerfout/{self.global_step}_depth.png')
+
                     gt_image = gt_rgb.detach()
                     gt_image = gt_image.reshape(prediction_height, prediction_width, 3).permute(2, 0,
                                                                                                 1).contiguous()
-                    torch_vis_2d(pred_image)
-                    plt.savefig(f'/tmp/nerfout/{self.global_step}_pred.png')
-                    torch_vis_2d(depth_image)
-                    plt.savefig(f'/tmp/nerfout/{self.global_step}_depth.png')
                     torch_vis_2d(gt_image)
                     plt.savefig(f'/tmp/nerfout/{self.global_step}_gt.png')
+
+                    full_patch_image = full_patch.detach()
+                    full_patch_image = full_patch_image.reshape(67, 81, 3).permute(2, 0, 1).contiguous()
+                    torch_vis_2d(full_patch_image)
+                    plt.savefig(f'/tmp/nerfout/{self.global_step}_full_patch.png')
+
+                    full_gt_image = full_gt.detach()
+                    full_gt_image = full_gt_image.reshape(67, 81, 3).permute(2, 0, 1).contiguous()
+                    torch_vis_2d(full_gt_image)
+                    plt.savefig(f'/tmp/nerfout/{self.global_step}_full_gt.png')
 
                 content_feat = self.style_model.get_content_feat(
                     ground_truth.reshape(prediction_height, prediction_width, 3).permute(2, 0,
