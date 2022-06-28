@@ -8,13 +8,13 @@ from nerf.utils import *
 
 
 class OrbitCamera:
-    def __init__(self, W, H, r=2, fovy=60):
+    def __init__(self, W, H, r=0.9, fovy=65):
         self.W = W
         self.H = H
         self.radius = r # camera distance from center
         self.fovy = fovy # in degree
         self.center = np.array([0, 0, 0], dtype=np.float32) # look at this point
-        self.rot = R.from_quat([1, 0, 0, 0]) # init camera matrix: [[1, 0, 0], [0, -1, 0], [0, 0, 1]] (to suit ngp convention)
+        self.rot = R.from_quat([0.97564243, 0.00286655, -0.21897604, 0.01277186]) # init camera matrix: [[1, 0, 0], [0, -1, 0], [0, 0, 1]] (to suit ngp convention)
         self.up = np.array([0, 1, 0], dtype=np.float32) # need to be normalized!
 
     # pose
@@ -46,14 +46,6 @@ class OrbitCamera:
 
         # wrong: rotate along global x/y axis
         #self.rot = R.from_euler('xy', [-dy * 0.1, -dx * 0.1], degrees=True) * self.rot
-
-        print(f"Radius: {self.radius}, FoV: {self.fovy}")
-        print("Center:")
-        print(self.center)
-        print("Rot:")
-        print(self.rot.as_quat())
-        print("Up:")
-        print(self.up)
     
     def scale(self, delta):
         self.radius *= 1.1 ** (-delta)
