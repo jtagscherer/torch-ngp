@@ -46,6 +46,14 @@ class OrbitCamera:
 
         # wrong: rotate along global x/y axis
         #self.rot = R.from_euler('xy', [-dy * 0.1, -dx * 0.1], degrees=True) * self.rot
+
+        print(f"Radius: {self.radius}, FoV: {self.fovy}")
+        print("Center:")
+        print(self.center)
+        print("Rot:")
+        print(self.rot)
+        print("Up:")
+        print(self.up)
     
     def scale(self, delta):
         self.radius *= 1.1 ** (-delta)
@@ -56,14 +64,6 @@ class OrbitCamera:
 
         # wrong: pan in global coordinate system
         #self.center += 0.001 * np.array([-dx, -dy, dz])
-
-        print(f"Radius: {self.radius}, FoV: {self.fovy}")
-        print("Center:")
-        print(self.center)
-        print("Rot:")
-        print(self.rot)
-        print("Up:")
-        print(self.up)
     
 
 
