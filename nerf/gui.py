@@ -51,7 +51,7 @@ class OrbitCamera:
         print("Center:")
         print(self.center)
         print("Rot:")
-        print(self.rot)
+        print(self.rot.as_quat())
         print("Up:")
         print(self.up)
     
