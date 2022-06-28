@@ -69,7 +69,8 @@ class NeRFGUI:
         self.debug = debug
         self.bg_color = None
         self.training = False
-        self.step = 0 # training step 
+        self.step = 0 # training step
+        self.render_step = 0
 
         self.render_buffer = np.zeros((self.W, self.H, 3), dtype=np.float32)
         self.need_update = True # camera moved, should reset accumulation
@@ -115,6 +116,11 @@ class NeRFGUI:
     
     def test_step(self):
         # TODO: seems we have to move data from GPU --> CPU --> GPU?
+
+        self.render_step += 1
+        if self.render_step % 5 == 0:
+            self.cam.set_orbit(10.0, 0.0)
+            self.need_update = True
 
         if self.need_update or self.spp < self.opt.max_spp:
         
