@@ -56,6 +56,14 @@ class OrbitCamera:
 
         # wrong: pan in global coordinate system
         #self.center += 0.001 * np.array([-dx, -dy, dz])
+
+        print(f"Radius: {self.radius}, FoV: {self.fovy}")
+        print("Center:")
+        print(self.center)
+        print("Rot:")
+        print(self.rot)
+        print("Up:")
+        print(self.up)
     
 
 
