@@ -416,7 +416,7 @@ class Trainer(object):
             bg_color = None
             gt_rgb = images
 
-        style_training_start_step = 5000
+        style_training_start_step = 13000
 
         #if self.global_step == style_training_start_step:
         enablePatchSampling(True)
@@ -438,16 +438,15 @@ class Trainer(object):
                 prediction = outputs['image']
                 prediction_depth = outputs['depth']
 
-                '''if self.global_step < style_training_start_step + 100:
+                if (self.global_step > style_training_start_step + 20000)&(self.global_step < style_training_start_step + 20100):
                     # Render predictions and depth maps
                     pred_image = prediction.detach()
                     pred_image = pred_image.reshape(67, 81, 3).permute(2, 0, 1).contiguous()
                     depth_image = prediction_depth.detach()
                     depth_image = depth_image.reshape(67, 81, 1).permute(2, 0, 1).contiguous()
-                    torch_vis_2d(pred_image)
-                    plt.savefig(f'/tmp/nerfout/{self.global_step}_pred.png')
+                    np.save(f'/tmp/nerfout/{self.global_step}_pred.npy', pred_image.permute(1,2,0).cpu().numpy())
                     torch_vis_2d(depth_image)
-                    plt.savefig(f'/tmp/nerfout/{self.global_step}_depth.png')'''
+                    np.save(f'/tmp/nerfout/{self.global_step}_depth.npy', depth_image.permute(1,2,0).cpu().numpy())
 
                 ground_truth = gt_rgb
 
