@@ -99,7 +99,7 @@ def get_rays(poses, intrinsics, H, W, N=-1, error_map=None, random_patches=False
         else:
             # Patch-wise training - Random choose one fixed pixel per region (region is random size and random position)
             total_inds = torch.arange(H * W).reshape(H, W)
-            patch_H, patch_W = 67, 81
+            patch_H, patch_W = 80, 142
             num_region_H, num_region_W = H // patch_H, W // patch_W  # 16, 24(Family, Francis, Horse), #8, 12(Truck, PG)
 
             region_size_v = np.random.randint(num_region_H // 2, num_region_H + 1)
@@ -324,6 +324,8 @@ class Trainer(object):
 
         # variable init
         self.epoch = 1
+        self.img_cnt = 0
+        self.save_path = "/tmp/nerfout/"
         self.global_step = 0
         self.local_step = 0
         self.stats = {
@@ -417,6 +419,8 @@ class Trainer(object):
             gt_rgb = images
 
         style_training_start_step = 13000
+        patch_H = 80
+        patch_W = 142
 
         #if self.global_step == style_training_start_step:
         enablePatchSampling(True)
@@ -437,26 +441,31 @@ class Trainer(object):
 
                 prediction = outputs['image']
                 prediction_depth = outputs['depth']
+                if (self.global_step%10000 == 0):
+                    self.img_cnt = 100
+                    self.save_path = f'/tmp/nerfout/{self.global_step}/'
+                    os.mkdir(self.save_path)
 
-                if (self.global_step > style_training_start_step + 20000)&(self.global_step < style_training_start_step + 20100):
+                if (self.img_cnt>0):
                     # Render predictions and depth maps
                     pred_image = prediction.detach()
-                    pred_image = pred_image.reshape(67, 81, 3).permute(2, 0, 1).contiguous()
+                    pred_image = pred_image.reshape(patch_H, patch_W, 3).permute(2, 0, 1).contiguous()
                     depth_image = prediction_depth.detach()
-                    depth_image = depth_image.reshape(67, 81, 1).permute(2, 0, 1).contiguous()
-                    np.save(f'/tmp/nerfout/{self.global_step}_pred.npy', pred_image.permute(1,2,0).cpu().numpy())
+                    depth_image = depth_image.reshape(patch_H, patch_W, 1).permute(2, 0, 1).contiguous()
+                    np.save(f'{self.save_path}{self.global_step}_pred.npy', pred_image.permute(1,2,0).cpu().numpy())
                     torch_vis_2d(depth_image)
-                    np.save(f'/tmp/nerfout/{self.global_step}_depth.npy', depth_image.permute(1,2,0).cpu().numpy())
+                    np.save(f'{self.save_path}{self.global_step}_depth.npy', depth_image.permute(1,2,0).cpu().numpy())
+                    self.img_cnt = self.img_cnt-1
 
                 ground_truth = gt_rgb
 
                 content_feat = self.style_model.get_content_feat(
-                    ground_truth.reshape(67, 81, 3).permute(2,0,1).contiguous().unsqueeze(0))
+                    ground_truth.reshape(patch_H, patch_W, 3).permute(2,0,1).contiguous().unsqueeze(0))
                 output_content_feat = self.style_model.get_content_feat(
-                    prediction.reshape(67, 81, 3).permute(2,0,1).contiguous().unsqueeze(0))
+                    prediction.reshape(patch_H, patch_W, 3).permute(2,0,1).contiguous().unsqueeze(0))
 
                 output_style_feats, output_style_feat_mean_std = self.style_model.get_style_feat(
-                    prediction.reshape(67, 81, 3).permute(2,0,1).contiguous().unsqueeze(0))
+                    prediction.reshape(patch_H, patch_W, 3).permute(2,0,1).contiguous().unsqueeze(0))
                 style_feats, style_feat_mean_std = self.style_model.get_style_feat(self.style_image.cuda().unsqueeze(0))
 
                 content_loss = get_content_loss(content_feat, output_content_feat)
