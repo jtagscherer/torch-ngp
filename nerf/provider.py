@@ -266,7 +266,9 @@ class NeRFDataset:
                 'H': rH,
                 'W': rW,
                 'rays_o': rays['rays_o'],
-                'rays_d': rays['rays_d'],    
+                'rays_d': rays['rays_d'],
+                'poses': poses,
+                'intrinsics': self.intrinsics    
             }
 
         poses = self.poses[index].to(self.device) # [B, 4, 4]

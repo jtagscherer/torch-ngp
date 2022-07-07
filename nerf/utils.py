@@ -448,13 +448,12 @@ class Trainer(object):
 
                 if (self.img_cnt>0):
                     # Render predictions and depth maps
-                    pred_image = prediction.detach()
-                    pred_image = pred_image.reshape(patch_H, patch_W, 3).permute(2, 0, 1).contiguous()
-                    depth_image = prediction_depth.detach()
-                    depth_image = depth_image.reshape(patch_H, patch_W, 1).permute(2, 0, 1).contiguous()
-                    np.save(f'{self.save_path}{self.global_step}_pred.npy', pred_image.permute(1,2,0).cpu().numpy())
+                    pred_full_size = self.test_gui(pose=data['poses'], intrinsics=data['intrinsics'])
+                    pred_image = pred_full_size['image']
+                    depth_image = pred_full_size['depth']
+                    np.save(f'{self.save_path}{self.global_step}_pred.npy', pred_image)
                     torch_vis_2d(depth_image)
-                    np.save(f'{self.save_path}{self.global_step}_depth.npy', depth_image.permute(1,2,0).cpu().numpy())
+                    np.save(f'{self.save_path}{self.global_step}_depth.npy', depth_image)
                     self.img_cnt = self.img_cnt-1
 
                 ground_truth = gt_rgb
