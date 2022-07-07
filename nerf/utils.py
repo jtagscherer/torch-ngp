@@ -448,9 +448,10 @@ class Trainer(object):
 
                 if (self.img_cnt>0):
                     # Render predictions and depth maps
-                    pred_full_size = self.test_gui(pose=data['poses'], intrinsics=data['intrinsics'])
+                    pred_full_size = self.test_gui(pose=data['poses'].cpu().numpy()[0,:,:], intrinsics=data['intrinsics'],W=data['W'], H=data['H'])
+                    self.model.train()
                     pred_image = pred_full_size['image']
-                    depth_image = pred_full_size['depth']
+                    depth_image = pred_full_size['depth'][:,:,np.newaxis]
                     np.save(f'{self.save_path}{self.global_step}_pred.npy', pred_image)
                     torch_vis_2d(depth_image)
                     np.save(f'{self.save_path}{self.global_step}_depth.npy', depth_image)
