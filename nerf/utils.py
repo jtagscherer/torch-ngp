@@ -473,6 +473,8 @@ class Trainer(object):
 
                 prediction = outputs['image']
                 prediction_depth = outputs['depth']
+                median_depth = torch.median(prediction_depth)
+                masked_prediction = torch.where(prediction_depth > median_depth, prediction, torch.zeros_like(prediction))
 
                 ground_truth = gt_rgb
                 ground_truth = ground_truth.reshape(67, 81, 3)[np.repeat(inx_h, len(inx_w)), np.tile(inx_w, len(inx_h)),
@@ -483,7 +485,7 @@ class Trainer(object):
                     print(
                         f'{self.global_step}: Average depth: {average_depth}, Resolution: {resolution} ({prediction_width} x {prediction_height})')
                     # Render predictions and depth maps
-                    pred_image = prediction.detach()
+                    pred_image = masked_prediction.detach()
                     pred_image = pred_image.reshape(prediction_height, prediction_width, 3).permute(2, 0,
                                                                                                     1).contiguous()
                     torch_vis_2d(pred_image)
@@ -515,11 +517,11 @@ class Trainer(object):
                     ground_truth.reshape(prediction_height, prediction_width, 3).permute(2, 0,
                                                                                          1).contiguous().unsqueeze(0))
                 output_content_feat = self.style_model.get_content_feat(
-                    prediction.reshape(prediction_height, prediction_width, 3).permute(2, 0, 1).contiguous().unsqueeze(
+                    masked_prediction.reshape(prediction_height, prediction_width, 3).permute(2, 0, 1).contiguous().unsqueeze(
                         0))
 
                 output_style_feats, output_style_feat_mean_std = self.style_model.get_style_feat(
-                    prediction.reshape(prediction_height, prediction_width, 3).permute(2, 0, 1).contiguous().unsqueeze(
+                    masked_prediction.reshape(prediction_height, prediction_width, 3).permute(2, 0, 1).contiguous().unsqueeze(
                         0))
                 style_feats, style_feat_mean_std = self.style_model.get_style_feat(self.style_image.cuda().unsqueeze(0))
 
