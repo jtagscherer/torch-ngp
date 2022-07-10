@@ -514,24 +514,24 @@ class Trainer(object):
                         pred_image = pred_image.reshape(prediction_height, prediction_width, 3).permute(2, 0,
                                                                                                         1).contiguous()
                         torch_vis_2d(pred_image)
-                        plt.savefig(f'/tmp/nerfout/{self.global_step}_pred.png')
+                        plt.savefig(f'/tmp/nerfout/{self.global_step}_{depth_level}_pred.png')
 
                         depth_image = prediction_depth.detach()
                         depth_image = depth_image.reshape(prediction_height, prediction_width, 1).permute(2, 0,
                                                                                                           1).contiguous()
                         torch_vis_2d(depth_image)
-                        plt.savefig(f'/tmp/nerfout/{self.global_step}_depth.png')
+                        plt.savefig(f'/tmp/nerfout/{self.global_step}_{depth_level}_depth.png')
 
                         gt_image = gt_rgb.detach()
                         gt_image = gt_image.reshape(prediction_height, prediction_width, 3).permute(2, 0,
                                                                                                     1).contiguous()
                         torch_vis_2d(gt_image)
-                        plt.savefig(f'/tmp/nerfout/{self.global_step}_gt.png')
+                        plt.savefig(f'/tmp/nerfout/{self.global_step}_{depth_level}_gt.png')
 
                         mask_image = prediction_mask.detach()
                         mask_image = full_patch_image.reshape(prediction_height, prediction_width, 1).permute(2, 0, 1).contiguous()
                         torch_vis_2d(mask_image)
-                        plt.savefig(f'/tmp/nerfout/{self.global_step}_mask.png')
+                        plt.savefig(f'/tmp/nerfout/{self.global_step}_{depth_level}_mask.png')
 
                     content_loss = get_content_loss(content_feat, output_content_feat)
                     nerf_loss = self.criterion(prediction, ground_truth).mean()
