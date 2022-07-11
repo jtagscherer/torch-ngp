@@ -37,9 +37,11 @@ from styletransfer.utils import load_style_image, get_content_loss, get_style_lo
 
 patch_sampling = False
 
+
 def enablePatchSampling(enable):
     global patch_sampling
     patch_sampling = enable
+
 
 def getPatchSampling():
     return patch_sampling
@@ -54,7 +56,8 @@ def custom_meshgrid(*args):
 
 
 @torch.cuda.amp.autocast(enabled=False)
-def get_rays(poses, intrinsics, H, W, N=-1, error_map=None, random_patches=False):
+def get_rays(poses, intrinsics, H, W, N=-1, error_map=None, random_patches=False, ray_resolution=None,
+             previous_inds=None):
     ''' get rays
     Args:
         poses: [B, 4, 4], cam2world
@@ -102,12 +105,25 @@ def get_rays(poses, intrinsics, H, W, N=-1, error_map=None, random_patches=False
             patch_H, patch_W = 67, 81
             num_region_H, num_region_W = H // patch_H, W // patch_W  # 16, 24(Family, Francis, Horse), #8, 12(Truck, PG)
 
-            region_size_v = np.random.randint(num_region_H // 2, num_region_H + 1)
-            region_size_u = np.random.randint(num_region_W // 3, num_region_W + 1)
-            region_position_v = np.random.randint(H - patch_H * region_size_v + region_size_v)
-            region_position_u = np.random.randint(W - patch_W * region_size_u + region_size_u)
-            inds = total_inds[region_position_v::region_size_v][:patch_H][:, region_position_u::region_size_u][:,
-                   :patch_W].reshape(-1)
+            if previous_inds is not None:
+                inds = previous_inds
+            else:
+                region_size_v = np.random.randint(num_region_H // 2, num_region_H + 1)
+                region_size_u = np.random.randint(num_region_W // 3, num_region_W + 1)
+                region_position_v = np.random.randint(H - patch_H * region_size_v + region_size_v)
+                region_position_u = np.random.randint(W - patch_W * region_size_u + region_size_u)
+                inds = total_inds[region_position_v::region_size_v][:patch_H][:, region_position_u::region_size_u][:,
+                   :patch_W]
+
+            results['previous_inds'] = inds
+
+            if ray_resolution is not None:
+                inx_w = np.array([i for i in range(81) if i % ray_resolution != 0])
+                inx_h = np.array([i for i in range(67) if i % ray_resolution != 0])
+                # inx = np.flip(np.transpose([np.tile(inx_w, len(inx_h)), np.repeat(inx_h, len(inx_w))]), 1)
+                inds = inds[np.repeat(inx_h, len(inx_w)), np.tile(inx_w, len(inx_h))]
+
+            inds = inds.reshape(-1)
             inds = inds.expand([B, inds.size(0)])
             inds = inds.to(device)
 
@@ -395,7 +411,7 @@ class Trainer(object):
                 print(*args, file=self.log_ptr)
                 self.log_ptr.flush()  # write immediately to file
 
-    ### ------------------------------	
+    ### ------------------------------
 
     def train_step(self, data, patch_data=None):
 
@@ -418,8 +434,8 @@ class Trainer(object):
 
         style_training_start_step = 5000
 
-        #if self.global_step == style_training_start_step:
-        enablePatchSampling(True)
+        if self.global_step == style_training_start_step:
+            enablePatchSampling(True)
 
         if self.global_step > style_training_start_step:
             # Freeze NeRF if not frozen yet
@@ -429,35 +445,82 @@ class Trainer(object):
                 self.optimizer = optim.Adam(self.model.parameters(), lr=0.0005)
 
             if 'images' in data:
-                # Render patch and get corresponding ground truth image
-                #prediction = self.model.render(rays_o, rays_d, staged=False, bg_color=None, perturb=True, force_all_rays=True,
-                #                               **vars(self.opt))['image']
-                outputs = self.model.render(rays_o, rays_d, staged=False, bg_color=None, perturb=True, force_all_rays=True,
+                outputs = self.model.render(rays_o, rays_d, staged=False, bg_color=None, perturb=True,
+                                            force_all_rays=True,
+                                            **vars(self.opt))
+
+                prediction_depth = outputs['depth'].detach()
+
+                average_depth = torch.mean(prediction_depth)
+                resolution = max(2, int(torch.pow(average_depth, 2) * 200))
+
+                inx_w = np.array([i for i in range(81) if i % resolution != 0])
+                inx_h = np.array([i for i in range(67) if i % resolution != 0])
+                prediction_width = len(inx_w)
+                prediction_height = len(inx_h)
+
+                # DEBUG
+                full_patch = outputs['image'].detach()
+                full_gt = gt_rgb.detach()
+
+                rays = get_rays(data['poses'], data['intrinsics'], data['H'], data['W'], 67 * 81, random_patches=True,
+                                ray_resolution=resolution, previous_inds=data['previous_inds'])
+                rays_o = rays['rays_o']  # [B, N, 3]
+                rays_d = rays['rays_d']  # [B, N, 3]
+                outputs = self.model.render(rays_o, rays_d, staged=False, bg_color=None, perturb=True,
+                                            force_all_rays=True,
                                             **vars(self.opt))
 
                 prediction = outputs['image']
                 prediction_depth = outputs['depth']
 
-                '''if self.global_step < style_training_start_step + 100:
+                ground_truth = gt_rgb
+                ground_truth = ground_truth.reshape(67, 81, 3)[np.repeat(inx_h, len(inx_w)), np.tile(inx_w, len(inx_h)),
+                               :].reshape(1, prediction_width * prediction_height, 3)
+                gt_rgb = ground_truth
+
+                if self.global_step < style_training_start_step + 50:
+                    print(
+                        f'{self.global_step}: Average depth: {average_depth}, Resolution: {resolution} ({prediction_width} x {prediction_height})')
                     # Render predictions and depth maps
                     pred_image = prediction.detach()
-                    pred_image = pred_image.reshape(67, 81, 3).permute(2, 0, 1).contiguous()
-                    depth_image = prediction_depth.detach()
-                    depth_image = depth_image.reshape(67, 81, 1).permute(2, 0, 1).contiguous()
+                    pred_image = pred_image.reshape(prediction_height, prediction_width, 3).permute(2, 0,
+                                                                                                    1).contiguous()
                     torch_vis_2d(pred_image)
                     plt.savefig(f'/tmp/nerfout/{self.global_step}_pred.png')
-                    torch_vis_2d(depth_image)
-                    plt.savefig(f'/tmp/nerfout/{self.global_step}_depth.png')'''
 
-                ground_truth = gt_rgb
+                    depth_image = prediction_depth.detach()
+                    depth_image = depth_image.reshape(prediction_height, prediction_width, 1).permute(2, 0,
+                                                                                                      1).contiguous()
+                    torch_vis_2d(depth_image)
+                    plt.savefig(f'/tmp/nerfout/{self.global_step}_depth.png')
+
+                    gt_image = gt_rgb.detach()
+                    gt_image = gt_image.reshape(prediction_height, prediction_width, 3).permute(2, 0,
+                                                                                                1).contiguous()
+                    torch_vis_2d(gt_image)
+                    plt.savefig(f'/tmp/nerfout/{self.global_step}_gt.png')
+
+                    full_patch_image = full_patch.detach()
+                    full_patch_image = full_patch_image.reshape(67, 81, 3).permute(2, 0, 1).contiguous()
+                    torch_vis_2d(full_patch_image)
+                    plt.savefig(f'/tmp/nerfout/{self.global_step}_full_patch.png')
+
+                    full_gt_image = full_gt.detach()
+                    full_gt_image = full_gt_image.reshape(67, 81, 3).permute(2, 0, 1).contiguous()
+                    torch_vis_2d(full_gt_image)
+                    plt.savefig(f'/tmp/nerfout/{self.global_step}_full_gt.png')
 
                 content_feat = self.style_model.get_content_feat(
-                    ground_truth.reshape(67, 81, 3).permute(2,0,1).contiguous().unsqueeze(0))
+                    ground_truth.reshape(prediction_height, prediction_width, 3).permute(2, 0,
+                                                                                         1).contiguous().unsqueeze(0))
                 output_content_feat = self.style_model.get_content_feat(
-                    prediction.reshape(67, 81, 3).permute(2,0,1).contiguous().unsqueeze(0))
+                    prediction.reshape(prediction_height, prediction_width, 3).permute(2, 0, 1).contiguous().unsqueeze(
+                        0))
 
                 output_style_feats, output_style_feat_mean_std = self.style_model.get_style_feat(
-                    prediction.reshape(67, 81, 3).permute(2,0,1).contiguous().unsqueeze(0))
+                    prediction.reshape(prediction_height, prediction_width, 3).permute(2, 0, 1).contiguous().unsqueeze(
+                        0))
                 style_feats, style_feat_mean_std = self.style_model.get_style_feat(self.style_image.cuda().unsqueeze(0))
 
                 content_loss = get_content_loss(content_feat, output_content_feat)
@@ -468,8 +531,8 @@ class Trainer(object):
                     loss = content_loss + nerf_loss
                 else:
                     loss = content_loss + style_loss
-                
-                if self.global_step%2000==0:
+
+                if self.global_step % 2000 == 0:
                     print(f'Content Loss: {content_loss}')
                     print(f'Style Loss: {style_loss}')
                     print(f'NeRF Loss: {nerf_loss}')
@@ -525,20 +588,21 @@ class Trainer(object):
 
         if patch_data is not None:
             style_prediction = \
-            self.model.render(patch_data['rays_o'], patch_data['rays_d'], staged=False, bg_color=None, perturb=True, force_all_rays=True,
-                              **vars(self.opt))['image']
+                self.model.render(patch_data['rays_o'], patch_data['rays_d'], staged=False, bg_color=None, perturb=True,
+                                  force_all_rays=True,
+                                  **vars(self.opt))['image']
             ground_truth = patch_data['images']
             output_style_feats, output_style_feat_mean_std = self.style_model.get_style_feat(
                 style_prediction.reshape(67, 81, 3).permute(2, 0, 1).contiguous().unsqueeze(0))
             style_feats, style_feat_mean_std = self.style_model.get_style_feat(self.style_image.cuda().unsqueeze(0))
 
             content_feat = self.style_model.get_content_feat(
-                    ground_truth.reshape(67, 81, 3).permute(2,0,1).contiguous().unsqueeze(0))
+                ground_truth.reshape(67, 81, 3).permute(2, 0, 1).contiguous().unsqueeze(0))
             output_content_feat = self.style_model.get_content_feat(
-                    style_prediction.reshape(67, 81, 3).permute(2,0,1).contiguous().unsqueeze(0))
+                style_prediction.reshape(67, 81, 3).permute(2, 0, 1).contiguous().unsqueeze(0))
             style_loss = get_style_loss(style_feat_mean_std, output_style_feat_mean_std)
             content_loss = get_content_loss(content_feat, output_content_feat)
-            loss = content_loss+0.01*style_loss
+            loss = content_loss + 0.01 * style_loss
 
         loss = loss.mean()
 
@@ -1025,7 +1089,7 @@ class Trainer(object):
                     self.log(f"[INFO] New best result: {self.stats['best_result']} --> {self.stats['results'][-1]}")
                     self.stats["best_result"] = self.stats["results"][-1]
 
-                    # save ema results 
+                    # save ema results
                     if self.ema is not None:
                         self.ema.store()
                         self.ema.copy_to()
