@@ -488,7 +488,7 @@ class Trainer(object):
                     prediction_mask = torch.where(
                         (prediction_depth > (minimal_depth + depth_level * depth_per_step)) & (
                                     prediction_depth < (minimal_depth + (depth_level + 1) * depth_per_step)),
-                        torch.ones_like(prediction_depth), torch.zeros_like(prediction_depth)).reshape(prediction_height, prediction_width)
+                        torch.ones_like(prediction_depth), torch.zeros_like(prediction_depth)).reshape(1, 1, prediction_height, prediction_width)
 
                     # Erode the prediction map analogously to Hoellein et al.
                     '''k = torch.ones(1, 1, 3, 3).type_as(prediction_mask)
