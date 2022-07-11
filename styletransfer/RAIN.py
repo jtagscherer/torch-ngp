@@ -97,40 +97,44 @@ class Net(nn.Module):
 
         self.fc_encoder.apply(weights_init_kaiming)
 
-    def _mask_feature_map(self, map, mask):
-        map_depth = input.shape[1]
-        map_width = input.shape[2]
-        map_height = input.shape[3]
+    def _mask_feature_map(self, feature_map, mask):
+        map_depth = feature_map.shape[1]
+        map_width = feature_map.shape[2]
+        map_height = feature_map.shape[3]
+
+        print('mask shape')
+        print(mask.shape)
 
         mask = nn.functional.interpolate(mask, size=(map_width, map_height))
         mask = torch.reshape(mask, (1, map_width, map_height))
         mask = torch.unsqueeze(mask, axis=1)
         mask = torch.repeat_interleave(mask, map_depth, axis=1)
 
-        return map * mask
+        return feature_map * mask
 
     # extract relu1_1, relu2_1, relu3_1, relu4_1 from input image
     def encode_with_intermediate(self, input, mask=None):
         results = [input]
         for i in range(4):
             func = getattr(self, 'enc_{:d}'.format(i + 1))
-            map = func(results[-1])
+            feature_map = func(results[-1])
 
             if mask is not None:
-                map = self._mask_feature_map(map=map, mask=mask)
+                feature_map = self._mask_feature_map(feature_map=feature_map, mask=mask)
 
-            results.append(map)
+            results.append(feature_map)
         return results[1:]
 
     # extract relu4_1 from input image
     def get_content_feat(self, input, mask=None):
+        output = input
         for i in range(4):
-            input = getattr(self, 'enc_{:d}'.format(i + 1))(input)
+            output = getattr(self, 'enc_{:d}'.format(i + 1))(output)
 
         if mask is not None:
-            input = self._mask_feature_map(map=input, mask=mask)
+            output = self._mask_feature_map(feature_map=output, mask=mask)
 
-        return input
+        return output
 
     def get_style_feat(self, input, mask=None):
         style_feats = self.encode_with_intermediate(input, mask=mask)
