@@ -432,7 +432,7 @@ class Trainer(object):
             bg_color = None
             gt_rgb = images
 
-        style_training_start_step = 5000
+        style_training_start_step = opt.style_start
 
         if self.global_step == style_training_start_step:
             enablePatchSampling(True)
@@ -452,7 +452,11 @@ class Trainer(object):
                 prediction_depth = outputs['depth'].detach()
 
                 average_depth = torch.mean(prediction_depth)
-                resolution = max(2, int(torch.pow(average_depth, 2) * 200))
+
+                if opt.depth_aware:
+                    resolution = max(2, int(torch.pow(average_depth, 2) * 200))
+                else:
+                    resolution = 2
 
                 inx_w = np.array([i for i in range(81) if i % resolution != 0])
                 inx_h = np.array([i for i in range(67) if i % resolution != 0])
@@ -479,7 +483,7 @@ class Trainer(object):
                                :].reshape(1, prediction_width * prediction_height, 3)
                 gt_rgb = ground_truth
 
-                if self.global_step < style_training_start_step + 50:
+                if opt.output_debug_images and self.global_step < style_training_start_step + 50:
                     print(
                         f'{self.global_step}: Average depth: {average_depth}, Resolution: {resolution} ({prediction_width} x {prediction_height})')
                     # Render predictions and depth maps
