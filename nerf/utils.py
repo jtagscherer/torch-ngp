@@ -488,7 +488,7 @@ class Trainer(object):
                     prediction_mask = torch.where(
                         (prediction_depth > (minimal_depth + depth_level * depth_per_step)) & (
                                     prediction_depth < (minimal_depth + (depth_level + 1) * depth_per_step)),
-                        torch.ones_like(prediction_depth), torch.zeros_like(prediction_depth))
+                        torch.ones_like(prediction_depth), torch.zeros_like(prediction_depth)).reshape(prediction_height, prediction_width, 1)
 
                     # Erode the prediction map analogously to Hoellein et al.
                     '''k = torch.ones(1, 1, 3, 3).type_as(prediction_mask)
@@ -535,8 +535,7 @@ class Trainer(object):
                         plt.savefig(f'/tmp/nerfout/{self.global_step}_{depth_level}_gt.png')
 
                         mask_image = prediction_mask.detach()
-                        mask_image = mask_image.reshape(prediction_height, prediction_width, 1).permute(2, 0,
-                                                                                                        1).contiguous()
+                        mask_image = mask_image.permute(2, 0, 1).contiguous()
                         torch_vis_2d(mask_image)
                         plt.savefig(f'/tmp/nerfout/{self.global_step}_{depth_level}_mask.png')
 
