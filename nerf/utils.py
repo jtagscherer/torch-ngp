@@ -113,7 +113,7 @@ def get_rays(poses, intrinsics, H, W, N=-1, error_map=None, random_patches=False
                 region_position_v = np.random.randint(H - patch_H * region_size_v + region_size_v)
                 region_position_u = np.random.randint(W - patch_W * region_size_u + region_size_u)
                 inds = total_inds[region_position_v::region_size_v][:patch_H][:, region_position_u::region_size_u][:,
-                   :patch_W]
+                       :patch_W]
 
             results['previous_inds'] = inds
 
@@ -432,7 +432,7 @@ class Trainer(object):
             bg_color = None
             gt_rgb = images
 
-        style_training_start_step = 5000
+        style_training_start_step = 1000
         depth_steps = 5
 
         if self.global_step == style_training_start_step:
@@ -459,18 +459,23 @@ class Trainer(object):
                 loss = None
 
                 for depth_level in range(depth_steps):
-                    resolution = torch.pow((depth_steps - depth_level) + 1, 2)
+                    resolution = pow(depth_level + 2, 2)
 
                     inx_w = np.array([i for i in range(81) if i % resolution != 0])
                     inx_h = np.array([i for i in range(67) if i % resolution != 0])
                     prediction_width = len(inx_w)
                     prediction_height = len(inx_h)
 
+                    ground_truth = gt_rgb.reshape(67, 81, 3)[np.repeat(inx_h, len(inx_w)),
+                                   np.tile(inx_w, len(inx_h)),
+                                   :].reshape(1, prediction_width * prediction_height, 3)
+
                     # DEBUG
                     full_patch = outputs['image'].detach()
-                    full_gt = gt_rgb.detach()
+                    full_gt = ground_truth.detach()
 
-                    rays = get_rays(data['poses'], data['intrinsics'], data['H'], data['W'], 67 * 81, random_patches=True,
+                    rays = get_rays(data['poses'], data['intrinsics'], data['H'], data['W'], 67 * 81,
+                                    random_patches=True,
                                     ray_resolution=resolution, previous_inds=data['previous_inds'])
                     rays_o = rays['rays_o']  # [B, N, 3]
                     rays_d = rays['rays_d']  # [B, N, 3]
@@ -480,15 +485,10 @@ class Trainer(object):
 
                     prediction = outputs['image']
                     prediction_depth = outputs['depth']
-                    prediction_mask = torch.where(prediction_depth > (minimal_depth + depth_level * depth_per_step)
-                                                  && prediction_depth > (minimal_depth + (depth_level + 1) * depth_per_step),
-                                                  torch.ones_like(prediction_depth), torch.zeros_like(prediction_depth))
-
-                    ground_truth = gt_rgb
-                    ground_truth = ground_truth.reshape(67, 81, 3)[np.repeat(inx_h, len(inx_w)),
-                                   np.tile(inx_w, len(inx_h)),
-                                   :].reshape(1, prediction_width * prediction_height, 3)
-                    gt_rgb = ground_truth
+                    prediction_mask = torch.where(
+                        (prediction_depth > (minimal_depth + depth_level * depth_per_step)) & (
+                                    prediction_depth < (minimal_depth + (depth_level + 1) * depth_per_step)),
+                        torch.ones_like(prediction_depth), torch.zeros_like(prediction_depth))
 
                     content_feat = self.style_model.get_content_feat(
                         ground_truth.reshape(prediction_height, prediction_width, 3).permute(2, 0,
@@ -496,19 +496,20 @@ class Trainer(object):
                             0))
                     output_content_feat = self.style_model.get_content_feat(
                         prediction.reshape(prediction_height, prediction_width, 3).permute(2, 0,
-                                                                                                  1).contiguous().unsqueeze(
+                                                                                           1).contiguous().unsqueeze(
                             0))
 
                     output_style_feats, output_style_feat_mean_std = self.style_model.get_style_feat(
                         prediction.reshape(prediction_height, prediction_width, 3).permute(2, 0,
-                                                                                                  1).contiguous().unsqueeze(
+                                                                                           1).contiguous().unsqueeze(
                             0))
                     style_feats, style_feat_mean_std = self.style_model.get_style_feat(
                         self.style_image.cuda().unsqueeze(0))
 
                     # TODO: Mask feature maps
                     if self.global_step < style_training_start_step + 10:
-                        print(f'{self.global_step}: Depth level: {depth_level}, Resolution: {resolution} ({prediction_width} x {prediction_height})')
+                        print(
+                            f'{self.global_step}: Depth level: {depth_level}, Resolution: {resolution} ({prediction_width} x {prediction_height})')
 
                         pred_image = prediction.detach()
                         pred_image = pred_image.reshape(prediction_height, prediction_width, 3).permute(2, 0,
@@ -522,14 +523,15 @@ class Trainer(object):
                         torch_vis_2d(depth_image)
                         plt.savefig(f'/tmp/nerfout/{self.global_step}_{depth_level}_depth.png')
 
-                        gt_image = gt_rgb.detach()
+                        gt_image = ground_truth.detach()
                         gt_image = gt_image.reshape(prediction_height, prediction_width, 3).permute(2, 0,
                                                                                                     1).contiguous()
                         torch_vis_2d(gt_image)
                         plt.savefig(f'/tmp/nerfout/{self.global_step}_{depth_level}_gt.png')
 
                         mask_image = prediction_mask.detach()
-                        mask_image = full_patch_image.reshape(prediction_height, prediction_width, 1).permute(2, 0, 1).contiguous()
+                        mask_image = mask_image.reshape(prediction_height, prediction_width, 1).permute(2, 0,
+                                                                                                        1).contiguous()
                         torch_vis_2d(mask_image)
                         plt.savefig(f'/tmp/nerfout/{self.global_step}_{depth_level}_mask.png')
 
@@ -550,41 +552,7 @@ class Trainer(object):
                 '''def mask_prediction(prediction, depth):
                     median_depth = torch.median(prediction_depth)
                     reshaped_prediction_depth = torch.repeat_interleave(torch.unsqueeze(depth, axis=2), 3, axis=2)
-                    return torch.where(reshaped_prediction_depth > median_depth, prediction, torch.zeros_like(prediction))
-
-                masked_prediction = mask_prediction(prediction, prediction_depth)
-
-                if self.global_step < style_training_start_step + 50:
-                    print(
-                        f'{self.global_step}: Average depth: {average_depth}, Resolution: {resolution} ({prediction_width} x {prediction_height})')
-                    # Render predictions and depth maps
-                    pred_image = masked_prediction.detach()
-                    pred_image = pred_image.reshape(prediction_height, prediction_width, 3).permute(2, 0,
-                                                                                                    1).contiguous()
-                    torch_vis_2d(pred_image)
-                    plt.savefig(f'/tmp/nerfout/{self.global_step}_pred.png')
-
-                    depth_image = prediction_depth.detach()
-                    depth_image = depth_image.reshape(prediction_height, prediction_width, 1).permute(2, 0,
-                                                                                                      1).contiguous()
-                    torch_vis_2d(depth_image)
-                    plt.savefig(f'/tmp/nerfout/{self.global_step}_depth.png')
-
-                    gt_image = gt_rgb.detach()
-                    gt_image = gt_image.reshape(prediction_height, prediction_width, 3).permute(2, 0,
-                                                                                                1).contiguous()
-                    torch_vis_2d(gt_image)
-                    plt.savefig(f'/tmp/nerfout/{self.global_step}_gt.png')
-
-                    full_patch_image = full_patch.detach()
-                    full_patch_image = full_patch_image.reshape(67, 81, 3).permute(2, 0, 1).contiguous()
-                    torch_vis_2d(full_patch_image)
-                    plt.savefig(f'/tmp/nerfout/{self.global_step}_full_patch.png')
-
-                    full_gt_image = full_gt.detach()
-                    full_gt_image = full_gt_image.reshape(67, 81, 3).permute(2, 0, 1).contiguous()
-                    torch_vis_2d(full_gt_image)
-                    plt.savefig(f'/tmp/nerfout/{self.global_step}_full_gt.png')'''
+                    return torch.where(reshaped_prediction_depth > median_depth, prediction, torch.zeros_like(prediction))'''
 
                 return prediction, ground_truth, loss
 
