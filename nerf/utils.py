@@ -499,20 +499,19 @@ class Trainer(object):
                     content_feat = self.style_model.get_content_feat(
                         ground_truth.reshape(prediction_height, prediction_width, 3).permute(2, 0,
                                                                                              1).contiguous().unsqueeze(
-                            0))
+                            0), mask=prediction_mask)
                     output_content_feat = self.style_model.get_content_feat(
                         prediction.reshape(prediction_height, prediction_width, 3).permute(2, 0,
                                                                                            1).contiguous().unsqueeze(
-                            0))
+                            0), mask=prediction_mask)
 
                     output_style_feats, output_style_feat_mean_std = self.style_model.get_style_feat(
                         prediction.reshape(prediction_height, prediction_width, 3).permute(2, 0,
                                                                                            1).contiguous().unsqueeze(
-                            0))
+                            0), mask=prediction_mask)
                     style_feats, style_feat_mean_std = self.style_model.get_style_feat(
                         self.style_image.cuda().unsqueeze(0))
 
-                    # TODO: Mask feature maps
                     if self.global_step < style_training_start_step + 10:
                         print(
                             f'{self.global_step}: Depth level: {depth_level}, Resolution: {resolution} ({prediction_width} x {prediction_height})')

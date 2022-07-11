@@ -97,22 +97,43 @@ class Net(nn.Module):
 
         self.fc_encoder.apply(weights_init_kaiming)
 
+    def _mask_feature_map(self, map, mask):
+        map_depth = input.shape[1]
+        map_width = input.shape[2]
+        map_height = input.shape[3]
+
+        mask = nn.functional.interpolate(mask, size=(map_width, map_height))
+        mask = torch.reshape(mask, (1, map_width, map_height))
+        mask = torch.unsqueeze(mask, axis=1)
+        mask = torch.repeat_interleave(mask, map_depth, axis=1)
+
+        return map * mask
+
     # extract relu1_1, relu2_1, relu3_1, relu4_1 from input image
-    def encode_with_intermediate(self, input):
+    def encode_with_intermediate(self, input, mask=None):
         results = [input]
         for i in range(4):
             func = getattr(self, 'enc_{:d}'.format(i + 1))
-            results.append(func(results[-1]))
+            map = func(results[-1])
+
+            if mask is not None:
+                map = self._mask_feature_map(map=map, mask=mask)
+
+            results.append(map)
         return results[1:]
 
     # extract relu4_1 from input image
-    def get_content_feat(self, input):
+    def get_content_feat(self, input, mask=None):
         for i in range(4):
             input = getattr(self, 'enc_{:d}'.format(i + 1))(input)
+
+        if mask is not None:
+            input = self._mask_feature_map(map=input, mask=mask)
+
         return input
 
-    def get_style_feat(self, input):
-        style_feats = self.encode_with_intermediate(input)
+    def get_style_feat(self, input, mask=None):
+        style_feats = self.encode_with_intermediate(input, mask=mask)
         out_mean = []
         out_std = []
         out_mean_std = []

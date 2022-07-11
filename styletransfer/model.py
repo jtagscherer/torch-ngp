@@ -31,8 +31,8 @@ class StyleNeRFpp(nn.Module):
         for param in self.RAIN_net.parameters():
             param.requires_grad = False
 
-    def get_content_feat(self, content_img):
-        return self.RAIN_net.get_content_feat(content_img)
+    def get_content_feat(self, content_img, mask=None):
+        return self.RAIN_net.get_content_feat(content_img, mask=mask)
 
-    def get_style_feat(self, style_img):
-        return self.RAIN_net.get_style_feat(style_img)
+    def get_style_feat(self, style_img, mask=None):
+        return self.RAIN_net.get_style_feat(style_img, mask=mask)
