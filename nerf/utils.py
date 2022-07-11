@@ -432,7 +432,7 @@ class Trainer(object):
             bg_color = None
             gt_rgb = images
 
-        style_training_start_step = 5000
+        style_training_start_step = self.opt.style_start
 
         if self.global_step == style_training_start_step:
             enablePatchSampling(True)
@@ -452,7 +452,11 @@ class Trainer(object):
                 prediction_depth = outputs['depth'].detach()
 
                 average_depth = torch.mean(prediction_depth)
-                resolution = max(2, int(torch.pow(average_depth, 2) * 200))
+
+                if self.opt.depth_aware:
+                    resolution = max(2, int(torch.pow(average_depth, 2) * 200))
+                else:
+                    resolution = 2
 
                 inx_w = np.array([i for i in range(81) if i % resolution != 0])
                 inx_h = np.array([i for i in range(67) if i % resolution != 0])
@@ -479,7 +483,7 @@ class Trainer(object):
                                :].reshape(1, prediction_width * prediction_height, 3)
                 gt_rgb = ground_truth
 
-                if self.global_step < style_training_start_step + 50:
+                if self.opt.output_debug_images and self.global_step < style_training_start_step + 50:
                     print(
                         f'{self.global_step}: Average depth: {average_depth}, Resolution: {resolution} ({prediction_width} x {prediction_height})')
                     # Render predictions and depth maps
@@ -752,18 +756,9 @@ class Trainer(object):
         for _ in range(step):
 
             # mimic an infinite loop dataloader (in case the total dataset is smaller than step)
-            '''if self.global_step == 5001:
-                        for param in self.model.sigma_net.parameters():
-                            param.requires_grad = False'''
             patch_data = None
             try:
                 data = next(loader)
-                '''if self.global_step > 5000:
-                    enablePatchSampling(True)
-                    patch_data = next(loader)
-                    enablePatchSampling(False)
-                else:
-                    patch_data = None'''
             except StopIteration:
                 loader = iter(train_loader)
                 data = next(loader)

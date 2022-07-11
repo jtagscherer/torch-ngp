@@ -50,6 +50,11 @@ if __name__ == '__main__':
     parser.add_argument('--fovy', type=float, default=50, help="default GUI camera fovy")
     parser.add_argument('--max_spp', type=int, default=64, help="GUI rendering max sample per pixel")
 
+    ### style transfer options
+    parser.add_argument('--style_start', type=int, default=5000, help="step at which training should switch to style transfer")
+    parser.add_argument('--output_debug_images', action='store_true', help="store some debug patches during the first few style steps")
+    parser.add_argument('--depth_aware', action='store_true', help="adapt patch resolution according to depth")
+
     ### experimental
     parser.add_argument('--error_map', action='store_true', help="use error map to sample rays")
     parser.add_argument('--clip_text', type=str, default='', help="text input for CLIP guidance")
