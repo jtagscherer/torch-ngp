@@ -752,18 +752,9 @@ class Trainer(object):
         for _ in range(step):
 
             # mimic an infinite loop dataloader (in case the total dataset is smaller than step)
-            '''if self.global_step == 5001:
-                        for param in self.model.sigma_net.parameters():
-                            param.requires_grad = False'''
             patch_data = None
             try:
                 data = next(loader)
-                '''if self.global_step > 5000:
-                    enablePatchSampling(True)
-                    patch_data = next(loader)
-                    enablePatchSampling(False)
-                else:
-                    patch_data = None'''
             except StopIteration:
                 loader = iter(train_loader)
                 data = next(loader)
