@@ -266,9 +266,7 @@ class NeRFDataset:
                 'H': rH,
                 'W': rW,
                 'rays_o': rays['rays_o'],
-                'rays_d': rays['rays_d'],
-                'poses': poses,
-                'intrinsics': self.intrinsics    
+                'rays_d': rays['rays_d'],    
             }
 
         poses = self.poses[index].to(self.device) # [B, 4, 4]
@@ -282,8 +280,9 @@ class NeRFDataset:
             'W': self.W,
             'rays_o': rays['rays_o'],
             'rays_d': rays['rays_d'],
+            'previous_inds': rays['previous_inds'] if 'previous_inds' in rays else None,
             'poses': poses,
-            'intrinsics': self.intrinsics
+            'intrinsics': self.intrinsics,
         }
 
         if self.images is not None:
