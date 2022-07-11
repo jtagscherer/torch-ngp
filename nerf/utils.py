@@ -491,10 +491,10 @@ class Trainer(object):
                         torch.ones_like(prediction_depth), torch.zeros_like(prediction_depth))
 
                     # Erode the prediction map analogously to Hoellein et al.
-                    k = torch.ones(1, 1, 3, 3).type_as(x)
-                    erosion_mask = torch.nn.functional.conv2d(x, k, padding=(1, 1)) / 3 ** 2
+                    '''k = torch.ones(1, 1, 3, 3).type_as(prediction_mask)
+                    erosion_mask = torch.nn.functional.conv2d(prediction_mask, k, padding=(1, 1)) / 3 ** 2
                     erosion_mask = torch.clamp(erosion_mask, 0, 1)
-                    prediction_mask = prediction_mask * (erosion_mask == 1)
+                    prediction_mask = prediction_mask * (erosion_mask == 1)'''
 
                     content_feat = self.style_model.get_content_feat(
                         ground_truth.reshape(prediction_height, prediction_width, 3).permute(2, 0,
