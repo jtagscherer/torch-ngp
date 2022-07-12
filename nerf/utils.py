@@ -102,7 +102,7 @@ def get_rays(poses, intrinsics, H, W, N=-1, error_map=None, random_patches=False
         else:
             # Patch-wise training - Random choose one fixed pixel per region (region is random size and random position)
             total_inds = torch.arange(H * W).reshape(H, W)
-            patch_H, patch_W = 80, 142
+            patch_H, patch_W = 67, 81
             num_region_H, num_region_W = H // patch_H, W // patch_W  # 16, 24(Family, Francis, Horse), #8, 12(Truck, PG)
 
             if previous_inds is not None:
