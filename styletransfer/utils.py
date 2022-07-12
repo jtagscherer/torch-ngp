@@ -8,8 +8,8 @@ data_transform = transforms.Compose([
 ])
 
 
-def load_style_image():
-    ori_style_img = Image.open('/home/inctag/inputdata/style.jpg').convert('RGB')
+def load_style_image(opt):
+    ori_style_img = Image.open(opt.style_path).convert('RGB')
     return data_transform(ori_style_img)
 
 

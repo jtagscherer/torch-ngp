@@ -54,6 +54,8 @@ if __name__ == '__main__':
     parser.add_argument('--style_start', type=int, default=5000, help="step at which training should switch to style transfer")
     parser.add_argument('--output_debug_images', action='store_true', help="store some debug patches during the first few style steps")
     parser.add_argument('--depth_aware', action='store_true', help="adapt patch resolution according to depth")
+    parser.add_argument('--style_path', type=str, default='/home/inctag/inputdata/style.jpg', help="path to style sransfer")
+    parser.add_argument('--vgg_path', type=str, default='/home/inctag/inputdata', help='path to vgg')
 
     ### experimental
     parser.add_argument('--error_map', action='store_true', help="use error map to sample rays")

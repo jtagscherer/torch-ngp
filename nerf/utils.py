@@ -371,8 +371,8 @@ class Trainer(object):
             f'[INFO] Trainer: {self.name} | {self.time_stamp} | {self.device} | {"fp16" if self.fp16 else "fp32"} | {self.workspace}')
         self.log(f'[INFO] #parameters: {sum([p.numel() for p in model.parameters() if p.requires_grad])}')
 
-        self.style_model = StyleNeRFpp().to(device)
-        self.style_image = load_style_image()
+        self.style_model = StyleNeRFpp(opt).to(device)
+        self.style_image = load_style_image(opt)
 
         if self.workspace is not None:
             if self.use_checkpoint == "scratch":
@@ -434,8 +434,8 @@ class Trainer(object):
             bg_color = None
             gt_rgb = images
 
-        patch_H = 80
-        patch_W = 142
+        patch_H = 67
+        patch_W = 81
         style_training_start_step = self.opt.style_start
 
         if self.global_step == style_training_start_step:
@@ -481,12 +481,12 @@ class Trainer(object):
 
                 prediction = outputs['image']
                 prediction_depth = outputs['depth']
-                if (self.global_step%10000 == 0):
+                if ((self.global_step%10000 == 0) and self.opt.output_debug_images):
                     self.img_cnt = 100
                     self.save_path = f'/tmp/nerfout/{self.global_step}/'
                     os.mkdir(self.save_path)
 
-                if (self.img_cnt>0):
+                if ((self.img_cnt>0) and self.opt.output_debug_images):
                     # Render predictions and depth maps
                     pred_full_size = self.test_gui(pose=data['poses'].cpu().numpy()[0,:,:], intrinsics=data['intrinsics'],W=data['W'], H=data['H'])
                     self.model.train()
