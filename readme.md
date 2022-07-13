@@ -12,6 +12,10 @@ For the purpose of Style Transfer, the following command line parameters have be
 | `depth_aware` | `false` | Flag denoting whether to adapt patch resolution to scene depth |
 | `output_debug_images` | `false` | Flag denoting whether debug information of patches should be stored for the first few style steps |
 
+Example command for starting the GUI:
+
+`python main_nerf.py data/fox --style_start 13000 --style_path "<insert path>" --vgg_path "<insert path>" --depth_aware --workspace trial_nerf -O --gui`
+
 # Original Readme
 
 A pytorch implementation of [instant-ngp](https://github.com/NVlabs/instant-ngp), as described in [_Instant Neural Graphics Primitives with a Multiresolution Hash Encoding_](https://nvlabs.github.io/instant-ngp/assets/mueller2022instant.pdf).
