@@ -1,4 +1,18 @@
-# torch-ngp
+# Instant NeRF Style Transfer
+
+The Instant NeRF Style Transfer is built upon [torch-ngp](https://github.com/ashawkey/torch-ngp), whose original Readme can be found below. Please refer to this documentation on how to run the framework.
+
+For the purpose of Style Transfer, the following command line parameters have been added.
+
+| Parameter | Default Value | Description |
+| --------- | ------------- | ----------- |
+| `style_start`| `5000` | Training step at which the loss should be switched from NeRF to content and style loss |
+| `style_path` | N/A | Path to the input style image |
+| `vgg_path` | N/A | Path to the pretrained checkpoint of VGG-19 |
+| `depth_aware` | `false` | Flag denoting whether to adapt patch resolution to scene depth |
+| `output_debug_images` | `false` | Flag denoting whether debug information of patches should be stored for the first few style steps |
+
+# Original Readme
 
 A pytorch implementation of [instant-ngp](https://github.com/NVlabs/instant-ngp), as described in [_Instant Neural Graphics Primitives with a Multiresolution Hash Encoding_](https://nvlabs.github.io/instant-ngp/assets/mueller2022instant.pdf).
 
@@ -53,7 +67,7 @@ For GPUs with lower architecture, `--tcnn` can still be used, but the speed will
 
 # Usage
 
-We use the same data format as instant-ngp, e.g., [armadillo](https://github.com/NVlabs/instant-ngp/blob/master/data/sdf/armadillo.obj) and [fox](https://github.com/NVlabs/instant-ngp/tree/master/data/nerf/fox). 
+We use the same data format as instant-ngp, e.g., [armadillo](https://github.com/NVlabs/instant-ngp/blob/master/data/sdf/armadillo.obj) and [fox](https://github.com/NVlabs/instant-ngp/tree/master/data/nerf/fox).
 Please download and put them under `./data`.
 
 First time running will take some time to compile the CUDA extensions.
@@ -92,9 +106,9 @@ python main_nerf.py data/fox --workspace trial_nerf -O --gui --test
 # for the blender dataset, you should add `--mode blender --bound 1.0 --scale 0.8 --dt_gamma 0`
 # --mode specifies dataset type ('blender' or 'colmap')
 # --bound means the scene is assumed to be inside box[-bound, bound]
-# --scale adjusts the camera locaction to make sure it falls inside the above bounding box. 
+# --scale adjusts the camera locaction to make sure it falls inside the above bounding box.
 # --dt_gamma controls the adaptive ray marching speed, set to 0 turns it off.
-python main_nerf.py data/nerf_synthetic/lego --workspace trial_nerf -O --mode blender --bound 1.0 --scale 0.8 --dt_gamma 0 
+python main_nerf.py data/nerf_synthetic/lego --workspace trial_nerf -O --mode blender --bound 1.0 --scale 0.8 --dt_gamma 0
 python main_nerf.py data/nerf_synthetic/lego --workspace trial_nerf -O --mode blender --bound 1.0 --scale 0.8 --dt_gamma 0 --gui
 
 # for the LLFF dataset, you should first convert it to nerf-compatible format:
@@ -111,7 +125,7 @@ python main_nerf.py data/TanksAndTemple/Family --workspace trial_nerf_family -O 
 python main_nerf.py data/TanksAndTemple/Family --workspace trial_nerf_family -O --mode blender --bound 1.0 --scale 0.33 --dt_gamma 0 --gui
 
 # for custom dataset, you should:
-# 1. take a video / many photos from different views 
+# 1. take a video / many photos from different views
 # 2. put the video under a path like ./data/custom/video.mp4 or the images under ./data/custom/images/*.jpg.
 # 3. call the preprocess code: (should install ffmpeg and colmap first! refer to the file for more options)
 python colmap2nerf.py --video ./data/custom/video.mp4 --run_colmap # if use video
@@ -129,7 +143,7 @@ python main_sdf.py data/armadillo.obj --workspace trial_sdf --fp16 --ff --test
 ### TensoRF
 # almost the same as HashNeRF, just replace the main script.
 python main_tensoRF.py data/fox --workspace trial_tensoRF -O
-python main_tensoRF.py data/nerf_synthetic/lego --workspace trial_tensoRF -O --mode blender --bound 1.0 --scale 0.8 --dt_gamma 0 
+python main_tensoRF.py data/nerf_synthetic/lego --workspace trial_tensoRF -O --mode blender --bound 1.0 --scale 0.8 --dt_gamma 0
 
 ```
 
@@ -180,7 +194,7 @@ If you are interested in contributing to this repo, you may start from searching
 * 2.28: density_grid now stores density on the voxel center (with randomness), instead of on the grid. This should improve the rendering quality, such as the black strips in the lego scene.
 * 2.23: better support for the blender dataset.
 * 2.22: add GUI for NeRF training.
-* 2.21: add GUI for NeRF visualizing. 
+* 2.21: add GUI for NeRF visualizing.
 * 2.20: cuda raymarching is finally stable now!
 * 2.15: add the official [tinycudann](https://github.com/NVlabs/tiny-cuda-nn) as an alternative backend.    
 * 2.10: add cuda_ray, can train/infer faster, but performance is worse currently.
